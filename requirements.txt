@@ -8,3 +8,4 @@ python-dotenv
 openai
 sqlite-utils
 groq
+requests
