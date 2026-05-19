@@ -19,42 +19,13 @@ from fastapi import WebSocket
 import os
 from dotenv import load_dotenv
 from groq import Groq
+import sqlite3
 load_dotenv()
 # =========================
 # WEBSOCKET CONNECTIONS
 # =========================
 
 active_rooms = {}
-
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# ---------- DB ----------
-def get_db():
-    return sqlite3.connect("database.db", check_same_thread=False)
-
-
-conn = get_db()
-cur = conn.cursor()
-
-# USERS
-# cur.execute("""
-
-# CREATE TABLE IF NOT EXISTS users(
-
-#     id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-#     username TEXT UNIQUE,
-
-#     password TEXT,
-
-#     room_id TEXT,
-
-#     viva_status TEXT
-
-# )
-
-# """)
 def init_db():
 
     conn = sqlite3.connect(
@@ -102,6 +73,37 @@ def init_db():
 
     except:
         pass
+app = FastAPI()
+init_db()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ---------- DB ----------
+def get_db():
+    return sqlite3.connect("database.db", check_same_thread=False)
+
+
+conn = get_db()
+cur = conn.cursor()
+
+# USERS
+# cur.execute("""
+
+# CREATE TABLE IF NOT EXISTS users(
+
+#     id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+#     username TEXT UNIQUE,
+
+#     password TEXT,
+
+#     room_id TEXT,
+
+#     viva_status TEXT
+
+# )
+
+# """)
+
 
 
 # RESULTS
