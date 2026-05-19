@@ -33,27 +33,76 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def get_db():
     return sqlite3.connect("database.db", check_same_thread=False)
 
+
 conn = get_db()
 cur = conn.cursor()
 
 # USERS
-cur.execute("""
+# cur.execute("""
 
-CREATE TABLE IF NOT EXISTS users(
+# CREATE TABLE IF NOT EXISTS users(
 
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+#     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    username TEXT UNIQUE,
+#     username TEXT UNIQUE,
 
-    password TEXT,
+#     password TEXT,
 
-    room_id TEXT,
+#     room_id TEXT,
 
-    viva_status TEXT
+#     viva_status TEXT
 
-)
+# )
 
-""")
+# """)
+def init_db():
+
+    conn = sqlite3.connect(
+        "database.db"
+    )
+
+    cur = conn.cursor()
+
+    # USERS TABLE
+
+    cur.execute("""
+
+    CREATE TABLE IF NOT EXISTS users(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        username TEXT UNIQUE,
+
+        password TEXT,
+
+        room_id TEXT,
+
+        viva_status TEXT
+
+    )
+
+    """)
+
+    # SAFE COLUMN FIXES
+
+    try:
+
+        cur.execute(
+            "ALTER TABLE users ADD COLUMN room_id TEXT"
+        )
+
+    except:
+        pass
+
+    try:
+
+        cur.execute(
+            "ALTER TABLE users ADD COLUMN viva_status TEXT"
+        )
+
+    except:
+        pass
+
 
 # RESULTS
 cur.execute("""
