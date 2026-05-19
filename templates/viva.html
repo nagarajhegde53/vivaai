@@ -5,19 +5,26 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport"
+<meta
+name="viewport"
 content="width=device-width, initial-scale=1.0">
 
-<title>Viva AI</title>
+<title>
+Viva AI
+</title>
 
-<link rel="stylesheet"
+<link
+rel="stylesheet"
 href="/static/viva.css">
 
 </head>
 
 <body>
 
-<!-- BACK -->
+
+<!-- =========================
+     BACK BUTTON
+========================= -->
 
 <button
 class="back"
@@ -28,13 +35,17 @@ onclick="goBack()">
 </button>
 
 
-<!-- START SCREEN -->
+<!-- =========================
+     START SCREEN
+========================= -->
 
 <div
 class="start"
 id="startScreen">
 
-    <h1>Viva AI</h1>
+    <h1>
+        Viva AI
+    </h1>
 
     <button id="startBtn">
 
@@ -45,39 +56,46 @@ id="startScreen">
 </div>
 
 
-<!-- MAIN -->
+<!-- =========================
+     MAIN WRAPPER
+========================= -->
 
 <div
 class="wrapper"
 id="main">
 
-    <!-- LEFT PANEL -->
+
+    <!-- =====================
+         LEFT PANEL
+    ====================== -->
 
     <div class="box">
 
-        <!-- STUDENT CAMERA -->
 
-        <div class="video-section">
+        <!-- =================
+             HIDDEN CAMERA
+        ================== -->
 
-            <video
-            id="studentVideo"
-            autoplay
-            muted
-            playsinline>
-            </video>
+        <!--
+        IMPORTANT:
+        Camera is hidden from student UI
+        but still streams to professor
+        through WebRTC.
+        -->
 
-            <div class="video-overlay">
-
-                <span class="live-dot"></span>
-
-                LIVE
-
-            </div>
-
-        </div>
+        <video
+        id="studentVideo"
+        autoplay
+        muted
+        playsinline
+        style="display:none;">
+        </video>
 
 
-        <!-- LIVE CHAT / TRANSCRIPT -->
+        <!-- =================
+             LIVE CHAT /
+             TRANSCRIPT
+        ================== -->
 
         <div
         class="chat"
@@ -85,17 +103,12 @@ id="main">
         </div>
 
 
-        <!-- CONTROLS -->
+        <!-- =================
+             CONTROLS
+        ================== -->
 
         <div class="controls">
 
-            <!-- RECORD QUESTION -->
-
-            <button id="recordQ">
-
-                Record Question
-
-            </button>
 
             <!-- RECORD ANSWER -->
 
@@ -105,7 +118,8 @@ id="main">
 
             </button>
 
-            <!-- STOP -->
+
+            <!-- STOP RECORDING -->
 
             <button id="stop">
 
@@ -113,13 +127,15 @@ id="main">
 
             </button>
 
-            <!-- STORE -->
+
+            <!-- STORE Q&A -->
 
             <button id="store">
 
                 Store Q&A
 
             </button>
+
 
             <!-- SUBMIT -->
 
@@ -128,6 +144,7 @@ id="main">
                 Submit
 
             </button>
+
 
             <!-- MUTE -->
 
@@ -140,7 +157,9 @@ id="main">
         </div>
 
 
-        <!-- ERRORS -->
+        <!-- =================
+             ERRORS
+        ================== -->
 
         <p
         id="errorBox"
@@ -150,7 +169,9 @@ id="main">
     </div>
 
 
-    <!-- RIGHT PANEL -->
+    <!-- =====================
+         RIGHT PANEL
+    ====================== -->
 
     <div class="stored">
 
@@ -160,6 +181,8 @@ id="main">
 
         </h2>
 
+        <!-- STORED QNA -->
+
         <div id="storedBox"></div>
 
     </div>
@@ -167,7 +190,9 @@ id="main">
 </div>
 
 
-<!-- REMOTE AUDIO -->
+<!-- =========================
+     REMOTE AUDIO
+========================= -->
 
 <audio
 id="remoteAudio"
@@ -175,7 +200,9 @@ autoplay>
 </audio>
 
 
-<!-- WEBSOCKET STATUS -->
+<!-- =========================
+     SOCKET STATUS
+========================= -->
 
 <div class="socket-status">
 
@@ -186,7 +213,9 @@ autoplay>
 </div>
 
 
-<!-- SIR VOICE POPUP -->
+<!-- =========================
+     PROFESSOR VOICE POPUP
+========================= -->
 
 <div
 id="voicePopup"
@@ -219,7 +248,9 @@ class="voice-popup">
 </div>
 
 
-<!-- JS -->
+<!-- =========================
+     JAVASCRIPT
+========================= -->
 
 <script src="/static/viva.js"></script>
 

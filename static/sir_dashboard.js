@@ -21,7 +21,14 @@ let webrtcEnabled = false;
 
 let muted = false;
 
+let sirTalking = false;
+
 let pendingCandidates = [];
+
+
+/* =========================
+   RTC CONFIG
+========================= */
 
 const rtcConfig = {
 
@@ -50,11 +57,7 @@ if(logoutBtn){
 
     logoutBtn.onclick = () => {
 
-        // STOP WEBRTC
-
         stopWebRTC();
-
-        // CLOSE SOCKET
 
         if(socket){
 
@@ -131,8 +134,7 @@ function renderStudents(students){
 
     if(!studentList) return;
 
-    studentList.innerHTML =
-    "";
+    studentList.innerHTML = "";
 
     students.forEach(student => {
 
@@ -231,7 +233,7 @@ async function joinViva(studentId){
 
             pendingCandidates = [];
 
-            // DYNAMIC WS/WSS
+            // DYNAMIC WS / WSS
 
             const protocol =
 
@@ -452,6 +454,36 @@ async function joinViva(studentId){
 
                     addSystemMessage(
                         "Student left voice chat"
+                    );
+
+                }
+
+                /* =====================
+                   STUDENT CAMERA ON
+                ===================== */
+
+                if(
+                    msg.type ===
+                    "student-camera-on"
+                ){
+
+                    addSystemMessage(
+                        "Student camera enabled"
+                    );
+
+                }
+
+                /* =====================
+                   STUDENT CAMERA OFF
+                ===================== */
+
+                if(
+                    msg.type ===
+                    "student-camera-off"
+                ){
+
+                    addSystemMessage(
+                        "Student camera disabled"
                     );
 
                 }
@@ -712,12 +744,38 @@ function addSystemMessage(text){
 
 
 /* =========================
-   START VOICE
+   START VOICE CHAT
 ========================= */
 
 async function startVoiceChat(){
 
     try{
+
+        // CLEAN OLD STREAMS
+
+        if(peerConnection){
+
+            peerConnection.close();
+
+            peerConnection = null;
+
+        }
+
+        if(localStream){
+
+            localStream
+            .getTracks()
+            .forEach(track => {
+
+                track.stop();
+
+            });
+
+            localStream = null;
+
+        }
+
+        // GET MIC
 
         localStream =
         await navigator
@@ -730,11 +788,27 @@ async function startVoiceChat(){
 
                 noiseSuppression:true,
 
-                autoGainControl:true
+                autoGainControl:false,
+
+                channelCount:1,
+
+                sampleRate:48000,
+
+                sampleSize:16
 
             },
 
             video:false
+
+        });
+
+        // START MIC OFF
+
+        localStream
+        .getAudioTracks()
+        .forEach(track => {
+
+            track.enabled = false;
 
         });
 
@@ -794,7 +868,7 @@ async function startVoiceChat(){
         );
 
         console.log(
-            "Sir Voice Started"
+            "Voice Connected"
         );
 
     }catch(err){
@@ -810,7 +884,7 @@ async function startVoiceChat(){
 
 
 /* =========================
-   CREATE PEER
+   CREATE PEER CONNECTION
 ========================= */
 
 function createPeerConnection(){
@@ -825,6 +899,9 @@ function createPeerConnection(){
     peerConnection.ontrack =
     (event) => {
 
+        const remoteStream =
+        event.streams[0];
+
         // AUDIO
 
         const remoteAudio =
@@ -832,13 +909,16 @@ function createPeerConnection(){
             "remoteAudio"
         );
 
-        if(remoteAudio){
+        if(
+            remoteAudio &&
+            remoteAudio.srcObject !== remoteStream
+        ){
 
             remoteAudio.srcObject =
-            event.streams[0];
+            remoteStream;
 
             remoteAudio.volume =
-            0.5;
+            0.2;
 
             remoteAudio.play();
 
@@ -851,10 +931,13 @@ function createPeerConnection(){
             "studentLiveVideo"
         );
 
-        if(studentVideo){
+        if(
+            studentVideo &&
+            studentVideo.srcObject !== remoteStream
+        ){
 
             studentVideo.srcObject =
-            event.streams[0];
+            remoteStream;
 
         }
 
@@ -892,7 +975,7 @@ function createPeerConnection(){
 
 
 /* =========================
-   START VOICE BUTTON
+   CONNECT VOICE BUTTON
 ========================= */
 
 const voiceChatBtn =
@@ -934,6 +1017,96 @@ if(voiceChatBtn){
         }
 
         await startVoiceChat();
+
+    };
+
+}
+
+
+/* =========================
+   TALK BUTTON
+========================= */
+
+const toggleVoiceBtn =
+document.getElementById(
+    "toggleVoiceBtn"
+);
+
+if(toggleVoiceBtn){
+
+    toggleVoiceBtn.onclick =
+    async () => {
+
+        if(!webrtcEnabled){
+
+            await startVoiceChat();
+
+        }
+
+        if(!localStream){
+
+            return;
+
+        }
+
+        sirTalking =
+        !sirTalking;
+
+        // ENABLE / DISABLE MIC
+
+        localStream
+        .getAudioTracks()
+        .forEach(track => {
+
+            track.enabled =
+            sirTalking;
+
+        });
+
+        // BUTTON UI
+
+        toggleVoiceBtn.innerHTML =
+
+        sirTalking
+
+        ?
+
+        `<i class="fa-solid fa-volume-xmark"></i>
+        Stop Talking`
+
+        :
+
+        `<i class="fa-solid fa-microphone"></i>
+        Start Talking`;
+
+        // SEND STATUS
+
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
+
+            socket.send(
+
+                JSON.stringify({
+
+                    type:
+
+                    sirTalking
+
+                    ?
+
+                    "sir-speaking"
+
+                    :
+
+                    "sir-stopped-speaking"
+
+                })
+
+            );
+
+        }
 
     };
 
@@ -1108,11 +1281,43 @@ function stopWebRTC(){
 
     }
 
+    // RESET AUDIO
+
+    const remoteAudio =
+    document.getElementById(
+        "remoteAudio"
+    );
+
+    if(remoteAudio){
+
+        remoteAudio.srcObject =
+        null;
+
+    }
+
+    // RESET FLAGS
+
     webrtcEnabled = false;
 
     muted = false;
 
+    sirTalking = false;
+
     pendingCandidates = [];
+
+    // RESET BUTTON
+
+    if(toggleVoiceBtn){
+
+        toggleVoiceBtn.innerHTML = `
+
+            <i class="fa-solid fa-microphone"></i>
+
+            Start Talking
+
+        `;
+
+    }
 
     console.log(
         "WebRTC stopped"

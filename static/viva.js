@@ -98,11 +98,6 @@ let currentBubbleA = null;
 
 let qaList = [];
 
-
-/* =========================
-   WEBSOCKET
-========================= */
-
 let socket = null;
 
 
@@ -119,6 +114,11 @@ let webrtcEnabled = false;
 let muted = false;
 
 let pendingCandidates = [];
+
+
+/* =========================
+   RTC CONFIG
+========================= */
 
 const rtcConfig = {
 
@@ -221,7 +221,7 @@ function connectSocket(){
         console.log(msg);
 
         /* =====================
-           QUESTION
+           QUESTION FROM SIR
         ===================== */
 
         if(
@@ -229,6 +229,18 @@ function connectSocket(){
             "question"
         ){
 
+            tempQuestion =
+            msg.text;
+
+            // REMOVE OLD QUESTION
+
+            if(currentBubbleQ){
+
+                currentBubbleQ.remove();
+
+            }
+
+            currentBubbleQ =
             createBubble(
 
                 `Sir: ${msg.text}`,
@@ -259,7 +271,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR MIC STARTED
+           SIR STARTED MIC
         ===================== */
 
         if(
@@ -277,6 +289,36 @@ function connectSocket(){
         }
 
         /* =====================
+           PROFESSOR TALKING
+        ===================== */
+
+        if(
+            msg.type ===
+            "sir-speaking"
+        ){
+
+            createSystemMessage(
+                "Professor started talking"
+            );
+
+        }
+
+        /* =====================
+           PROFESSOR STOPPED
+        ===================== */
+
+        if(
+            msg.type ===
+            "sir-stopped-speaking"
+        ){
+
+            createSystemMessage(
+                "Professor stopped talking"
+            );
+
+        }
+
+        /* =====================
            WEBRTC OFFER
         ===================== */
 
@@ -284,6 +326,8 @@ function connectSocket(){
             msg.type ===
             "webrtc-offer"
         ){
+
+            // START CAMERA + MIC
 
             if(!webrtcEnabled){
 
@@ -474,6 +518,32 @@ async function startStudentMedia(){
 
     try{
 
+        // CLEAN OLD STREAMS
+
+        if(peerConnection){
+
+            peerConnection.close();
+
+            peerConnection = null;
+
+        }
+
+        if(localStream){
+
+            localStream
+            .getTracks()
+            .forEach(track => {
+
+                track.stop();
+
+            });
+
+            localStream = null;
+
+        }
+
+        // GET CAMERA + MIC
+
         localStream =
         await navigator
         .mediaDevices
@@ -487,7 +557,13 @@ async function startStudentMedia(){
 
                 noiseSuppression:true,
 
-                autoGainControl:true
+                autoGainControl:false,
+
+                channelCount:1,
+
+                sampleRate:48000,
+
+                sampleSize:16
 
             }
 
@@ -495,7 +571,8 @@ async function startStudentMedia(){
 
         webrtcEnabled = true;
 
-        // SHOW VIDEO
+        // HIDDEN VIDEO STREAM
+        // SENT TO SIR
 
         const studentVideo =
         document.getElementById(
@@ -508,6 +585,8 @@ async function startStudentMedia(){
             localStream;
 
         }
+
+        // CREATE PEER
 
         createPeerConnection();
 
@@ -524,6 +603,26 @@ async function startStudentMedia(){
             );
 
         });
+
+        // NOTIFY SIR
+
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
+
+            socket.send(
+
+                JSON.stringify({
+
+                    type:
+                    "student-camera-on"
+
+                })
+
+            );
+
+        }
 
         console.log(
             "Student media started"
@@ -542,7 +641,7 @@ async function startStudentMedia(){
 
 
 /* =========================
-   CREATE PEER
+   CREATE PEER CONNECTION
 ========================= */
 
 function createPeerConnection(){
@@ -557,18 +656,24 @@ function createPeerConnection(){
     peerConnection.ontrack =
     (event) => {
 
+        const remoteStream =
+        event.streams[0];
+
         const remoteAudio =
         document.getElementById(
             "remoteAudio"
         );
 
-        if(remoteAudio){
+        if(
+            remoteAudio &&
+            remoteAudio.srcObject !== remoteStream
+        ){
 
             remoteAudio.srcObject =
-            event.streams[0];
+            remoteStream;
 
             remoteAudio.volume =
-            0.5;
+            0.2;
 
             remoteAudio.play();
 
@@ -653,6 +758,20 @@ function stopWebRTC(){
 
     }
 
+    // RESET AUDIO
+
+    const remoteAudio =
+    document.getElementById(
+        "remoteAudio"
+    );
+
+    if(remoteAudio){
+
+        remoteAudio.srcObject =
+        null;
+
+    }
+
     webrtcEnabled = false;
 
     muted = false;
@@ -692,45 +811,18 @@ if(
         .transcript;
 
         /* =====================
-           QUESTION
-        ===================== */
-
-        if(
-            mode ===
-            "question"
-        ){
-
-            tempQuestion =
-            text;
-
-            if(currentBubbleQ){
-
-                currentBubbleQ.remove();
-
-            }
-
-            currentBubbleQ =
-            createBubble(
-
-                text,
-
-                "question"
-
-            );
-
-        }
-
-        /* =====================
            ANSWER
         ===================== */
 
-        else if(
+        if(
             mode ===
             "answer"
         ){
 
             tempAnswer =
             text;
+
+            // REMOVE OLD ANSWER
 
             if(currentBubbleA){
 
@@ -747,7 +839,7 @@ if(
 
             );
 
-            // SEND TO SIR
+            // SEND ANSWER TO SIR
 
             if(
                 socket &&
@@ -832,24 +924,6 @@ function createSystemMessage(text){
 
 
 /* =========================
-   RECORD QUESTION
-========================= */
-
-document.getElementById(
-    "recordQ"
-).onclick = () => {
-
-    errorBox.innerText =
-    "";
-
-    mode = "question";
-
-    recognition.start();
-
-};
-
-
-/* =========================
    RECORD ANSWER
 ========================= */
 
@@ -897,7 +971,7 @@ document.getElementById(
     ){
 
         errorBox.innerText =
-        "Please record both question and answer";
+        "Question or answer missing";
 
         return;
 
@@ -913,7 +987,7 @@ document.getElementById(
 
     });
 
-    // REMOVE TEMP
+    // REMOVE TEMP BUBBLES
 
     if(currentBubbleQ){
 

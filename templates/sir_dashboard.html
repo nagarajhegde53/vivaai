@@ -5,15 +5,20 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport"
+<meta
+name="viewport"
 content="width=device-width, initial-scale=1.0">
 
-<title>Viva AI - Sir Dashboard</title>
+<title>
+Viva AI - Sir Dashboard
+</title>
 
-<link rel="stylesheet"
+<link
+rel="stylesheet"
 href="/static/sir_dashboard.css">
 
-<link rel="stylesheet"
+<link
+rel="stylesheet"
 href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 </head>
@@ -22,7 +27,9 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
 
 <div class="bg-animation"></div>
 
-<!-- NAVBAR -->
+<!-- =========================
+     NAVBAR
+========================= -->
 
 <nav class="navbar">
 
@@ -59,36 +66,49 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
 </nav>
 
 
-<!-- MAIN -->
+<!-- =========================
+     MAIN DASHBOARD
+========================= -->
 
 <div class="dashboard">
 
-    <!-- SIDEBAR -->
+    <!-- =====================
+         SIDEBAR
+    ====================== -->
 
     <aside class="sidebar">
 
         <div class="sidebar-title">
+
             Students
+
         </div>
 
-        <!-- DYNAMIC STUDENTS -->
+        <!-- DYNAMIC STUDENT LIST -->
 
         <div class="student-list"></div>
 
     </aside>
 
 
-    <!-- CENTER PANEL -->
+    <!-- =====================
+         CENTER PANEL
+    ====================== -->
 
     <main class="center-panel">
 
-        <!-- VIDEO -->
+
+        <!-- =================
+             LIVE VIDEO
+        ================== -->
 
         <section class="video-section glass">
 
             <div class="section-header">
 
-                <h2>Live Viva</h2>
+                <h2>
+                    Live Viva
+                </h2>
 
                 <div class="connection">
                     Connected
@@ -97,12 +117,23 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
             </div>
 
             <div class="video-box">
-                <audio
-id="remoteAudio"
-autoplay>
-</audio>
 
-                <video autoplay muted></video>
+                <!-- REMOTE AUDIO -->
+
+                <audio
+                id="remoteAudio"
+                autoplay>
+                </audio>
+
+                <!-- STUDENT LIVE VIDEO -->
+
+                <video
+                id="studentLiveVideo"
+                autoplay
+                playsinline>
+                </video>
+
+                <!-- WAVES -->
 
                 <div class="wave-container">
 
@@ -118,13 +149,17 @@ autoplay>
         </section>
 
 
-        <!-- QUESTION -->
+        <!-- =================
+             QUESTION PANEL
+        ================== -->
 
         <section class="question-section glass">
 
             <div class="section-header">
 
-                <h2>Ask Question</h2>
+                <h2>
+                    Ask Question
+                </h2>
 
             </div>
 
@@ -136,37 +171,74 @@ autoplay>
                 placeholder="Voice question will appear here...">
                 </textarea>
 
+                <!-- BUTTONS -->
+
                 <div class="question-actions">
+
+                    <!-- CONNECT WEBRTC -->
+
                     <button
-id="voiceChatBtn"
-class="secondary-btn">
+                    id="voiceChatBtn"
+                    class="secondary-btn">
 
-    <i class="fa-solid fa-headset"></i>
+                        <i class="fa-solid fa-headset"></i>
 
-    Start Voice
+                        Connect Voice
 
-</button>
-<button
-id="muteBtn"
-class="secondary-btn">
+                    </button>
 
-    <i class="fa-solid fa-microphone-slash"></i>
 
-    Mute
+                    <!-- START / STOP TALK -->
 
-</button>
+                    <button
+                    id="toggleVoiceBtn"
+                    class="secondary-btn">
 
-                    <!-- MIC BUTTON -->
+                        <i class="fa-solid fa-microphone"></i>
+
+                        Start Talking
+
+                    </button>
+
+
+                    <!-- MUTE -->
+
+                    <button
+                    id="muteBtn"
+                    class="secondary-btn">
+
+                        <i class="fa-solid fa-microphone-slash"></i>
+
+                        Mute
+
+                    </button>
+
+
+                    <!-- END CALL -->
+
+                    <button
+                    id="endVoiceBtn"
+                    class="secondary-btn">
+
+                        <i class="fa-solid fa-phone-slash"></i>
+
+                        End Voice
+
+                    </button>
+
+
+                    <!-- SPEECH QUESTION -->
 
                     <button
                     id="voiceQuestionBtn"
                     class="secondary-btn">
 
-                        <i class="fa-solid fa-microphone"></i>
+                        <i class="fa-solid fa-circle-question"></i>
 
                         Voice Ask
 
                     </button>
+
 
                     <!-- AI FOLLOWUP -->
 
@@ -186,13 +258,17 @@ class="secondary-btn">
         </section>
 
 
-        <!-- LIVE TRANSCRIPT -->
+        <!-- =================
+             LIVE TRANSCRIPT
+        ================== -->
 
         <section class="transcript glass">
 
             <div class="section-header">
 
-                <h2>Live Transcript</h2>
+                <h2>
+                    Live Transcript
+                </h2>
 
             </div>
 
@@ -205,23 +281,32 @@ class="secondary-btn">
     </main>
 
 
-    <!-- RIGHT PANEL -->
+    <!-- =====================
+         RIGHT PANEL
+    ====================== -->
 
     <aside class="right-panel">
 
-        <!-- AI ANALYSIS -->
+
+        <!-- =================
+             AI ANALYSIS
+        ================== -->
 
         <section class="analysis glass">
 
             <div class="section-header">
 
-                <h2>AI Analysis</h2>
+                <h2>
+                    AI Analysis
+                </h2>
 
             </div>
 
             <div class="metric">
 
-                <span>Confidence</span>
+                <span>
+                    Confidence
+                </span>
 
                 <div class="bar">
 
@@ -233,7 +318,9 @@ class="secondary-btn">
 
             <div class="metric">
 
-                <span>Communication</span>
+                <span>
+                    Communication
+                </span>
 
                 <div class="bar">
 
@@ -245,7 +332,9 @@ class="secondary-btn">
 
             <div class="metric">
 
-                <span>Understanding</span>
+                <span>
+                    Understanding
+                </span>
 
                 <div class="bar">
 
@@ -258,13 +347,17 @@ class="secondary-btn">
         </section>
 
 
-        <!-- MONITORING -->
+        <!-- =================
+             MONITORING
+        ================== -->
 
         <section class="cheating glass">
 
             <div class="section-header">
 
-                <h2>Monitoring</h2>
+                <h2>
+                    Monitoring
+                </h2>
 
             </div>
 
@@ -283,13 +376,17 @@ class="secondary-btn">
         </section>
 
 
-        <!-- CHAT -->
+        <!-- =================
+             LIVE CHAT
+        ================== -->
 
         <section class="chat glass">
 
             <div class="section-header">
 
-                <h2>Live Chat</h2>
+                <h2>
+                    Live Chat
+                </h2>
 
             </div>
 
@@ -320,7 +417,9 @@ class="secondary-btn">
 </div>
 
 
-<!-- MOBILE NAV -->
+<!-- =========================
+     MOBILE NAV
+========================= -->
 
 <div class="mobile-nav">
 
@@ -351,7 +450,9 @@ class="secondary-btn">
 </div>
 
 
-<!-- JS -->
+<!-- =========================
+     SCRIPT
+========================= -->
 
 <script src="/static/sir_dashboard.js"></script>
 
