@@ -1,0 +1,116 @@
+body{
+  font-family:sans-serif;
+  text-align:center;
+  margin:0;
+  background:linear-gradient(135deg,#fdfaf6,#e3f2fd);
+}
+
+/* BLUR ONLY MAIN */
+.blur{
+  filter:blur(6px);
+  pointer-events:none;
+}
+
+/* NAV BUTTONS */
+.back{
+  position:absolute;
+  top:20px;
+  padding:8px 12px;
+  border:none;
+  border-radius:6px;
+  background:white;
+  cursor:pointer;
+}
+
+.left{ left:20px; }
+.right{ right:20px; }
+
+/* PAUSE BUTTON */
+.pause{
+  position:absolute;
+  top:20px;
+  right:100px;
+  padding:8px 12px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+/* MAIN BOX */
+.box{
+  margin:50px auto;
+  padding:20px;
+  width:90%;
+  max-width:450px;
+
+  background:rgba(255,255,255,0.6);
+  backdrop-filter:blur(10px);
+
+  border-radius:12px;
+}
+
+/* OPTIONS */
+.opt{
+  margin:10px;
+  padding:10px;
+  background:#eee;
+  border-radius:8px;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.opt:hover{
+  background:#007bff;
+  color:white;
+  transform:scale(1.05);
+}
+
+/* OVERLAY */
+.overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+
+  display:none;
+  justify-content:center;
+  align-items:center;
+
+  background:rgba(0,0,0,0.5);
+  z-index:9999;
+}
+
+/* RESULT BOX */
+.resultBox{
+  width:90%;
+  max-width:500px;
+  max-height:80vh;
+  overflow-y:auto;
+
+  padding:20px;
+
+  background:white;
+  border-radius:16px;
+}
+
+/* ANALYSIS TEXT */
+#analysis{
+  margin-top:10px;
+  text-align:left;
+  white-space:pre-wrap;
+  font-size:14px;
+}
+
+/* BUTTON */
+.resultBox button{
+  margin-top:15px;
+  padding:10px;
+  width:80%;
+  border:none;
+  border-radius:8px;
+  background:#007bff;
+  color:white;
+  cursor:pointer;
+}
+

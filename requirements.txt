@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+websockets
+aiofiles
+python-dotenv
+openai
+sqlite-utils
+groq
+webRTC

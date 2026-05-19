@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Friend Tracking</title>
+<link rel="stylesheet" href="/static/friend.css">
+</head>
+<body>
+
+<button onclick="goPractice()">← Back</button>
+
+<h1>👥 Friend Tracking</h1>
+
+<button onclick="openForm()">+ Add Friend</button>
+
+<div id="overlay" class="overlay">
+  <div class="formBox">
+    <input id="friendName" placeholder="Enter friend name">
+    <button onclick="addFriend()">Bind</button>
+    <button onclick="closeForm()">Cancel</button>
+  </div>
+</div>
+
+<div class="split">
+
+  <div class="panel">
+    <h2 id="myTitle"></h2>
+    <div id="myData"></div>
+  </div>
+
+  <div class="panel">
+    <h2 id="friendTitle"></h2>
+    <div id="friendData"></div>
+  </div>
+
+</div>
+
+<script src="/static/friend.js"></script>
+</body>
+</html>

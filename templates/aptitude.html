@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Aptitude</title>
+<link rel="stylesheet" href="/static/aptitude.css">
+</head>
+<body>
+
+<h2 id="company"></h2>
+
+<button class="back" onclick="goPractice()">←</button>
+<button class="pause" onclick="togglePause()">⏸</button>
+
+<h3 id="timer">05:00</h3>
+
+<div class="box">
+
+  <h2 id="question"></h2>
+
+  <div class="options">
+    <div class="opt" onclick="selectOption(this)"></div>
+    <div class="opt" onclick="selectOption(this)"></div>
+    <div class="opt" onclick="selectOption(this)"></div>
+    <div class="opt" onclick="selectOption(this)"></div>
+  </div>
+
+  <button onclick="skip()">Skip</button>
+
+</div>
+
+
+<!-- RESULT POPUP -->
+<div class="resultOverlay" id="resultOverlay">
+
+  <div class="resultBox">
+
+    <h2 id="resultText"></h2>
+
+    <p id="analysis"></p>
+
+    <button id="nextBtn"></button>
+
+  </div>
+
+</div>
+
+<script src="/static/aptitude.js"></script>
+</body>
+</html>

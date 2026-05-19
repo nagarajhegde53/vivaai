@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Suggestions</title>
+<link rel="stylesheet" href="/static/suggestions.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1 id="title">Performance Insights</h1>
+
+<button class="back" onclick="goDashboard()">⬅ Dashboard</button>
+
+<!-- 🔥 SCORE COMPARISON -->
+<div class="card compare">
+  <h2>Topper vs You</h2>
+  <div class="scores">
+    <div class="score-box">
+      <h3>You</h3>
+      <p id="myScore">--</p>
+    </div>
+    <div class="score-box topper">
+      <h3 id="topName">Topper</h3>
+      <p id="topScore">--</p>
+    </div>
+  </div>
+</div>
+
+<!-- 🔥 LINE GRAPH -->
+<div class="card">
+  <h2>Score Trend</h2>
+  <canvas id="lineChart"></canvas>
+</div>
+
+<!-- 🔥 SKILLS -->
+<div class="skills">
+
+  <div class="box">
+    <h3>You</h3>
+    <div class="circles">
+      <div class="c"><div id="m_problem" class="circle"></div><p>Problem</p></div>
+      <div class="c"><div id="m_critical" class="circle"></div><p>Critical</p></div>
+      <div class="c"><div id="m_comm" class="circle"></div><p>Communication</p></div>
+      <div class="c"><div id="m_creative" class="circle"></div><p>Creativity</p></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Topper</h3>
+    <div class="circles">
+      <div class="c"><div id="t_problem" class="circle"></div><p>Problem</p></div>
+      <div class="c"><div id="t_critical" class="circle"></div><p>Critical</p></div>
+      <div class="c"><div id="t_comm" class="circle"></div><p>Communication</p></div>
+      <div class="c"><div id="t_creative" class="circle"></div><p>Creativity</p></div>
+    </div>
+  </div>
+
+</div>
+
+
+
+<script src="/static/suggestions.js"></script>
+</body>
+</html>

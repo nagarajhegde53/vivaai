@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>HR Interview</title>
+<link rel="stylesheet" href="/static/hr.css">
+</head>
+
+<body>
+
+<button class="back" onclick="goPractice()">🏠</button>
+
+<!-- FORM -->
+<div id="formBox">
+
+  <h2>HR Interview Setup</h2>
+
+  <input id="name" placeholder="Your Name">
+  <input id="skills" placeholder="Skills">
+  <input id="languages" placeholder="Languages">
+  <input id="goals" placeholder="Career Goals">
+  <input id="projects" placeholder="Projects">
+
+  <button onclick="startInterview()">Start Interview</button>
+
+</div>
+
+<!-- INTERVIEW -->
+<div id="chatBox">
+
+  <h2>AI HR Interview</h2>
+
+  <!-- HR -->
+  <div class="card">
+    <h3>👨‍💼 Interviewer</h3>
+    <div id="hrSpeech" class="speechBox"></div>
+  </div>
+
+  <!-- USER -->
+  <div class="card">
+    <h3>👤 You (Live)</h3>
+    <div id="live" class="speechBox"></div>
+  </div>
+
+  <!-- CHAT -->
+  <div id="chat"></div>
+
+  <!-- PROBABILITY -->
+  <h3>Pass Chance: <span id="prob">0%</span></h3>
+
+  <!-- LIVE SCORES -->
+  <div class="scorePanel">
+    <div>🗣 Communication: <span id="comm">0</span></div>
+    <div>💻 Technical: <span id="tech">0</span></div>
+    <div>🔥 Confidence: <span id="conf">0</span></div>
+  </div>
+
+  <!-- CONTROLS -->
+  <button onclick="startListening()">🎤 Start</button>
+  <button onclick="stopListening()">⛔ Stop</button>
+  <button onclick="togglePause()">⏸ Pause</button>
+
+</div>
+
+<!-- RESULT -->
+<div id="resultOverlay" class="overlay">
+  <div class="resultBox">
+    <h2>Final Result</h2>
+    <div id="resultText"></div>
+    <button onclick="goPractice()">Back</button>
+  </div>
+</div>
+
+<script src="/static/hr.js"></script>
+</body>
+</html>

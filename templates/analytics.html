@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Analytics</title>
+<link rel="stylesheet" href="/static/analytics.css">
+</head>
+<body>
+
+<h1 class="title">Performance Analytics</h1>
+
+<button class="back" onclick="goDashboard()">⬅ Dashboard</button>
+
+<!-- TOP BOXES -->
+<div class="top-boxes">
+
+  <div class="box">
+    <h3>Topper</h3>
+    <p id="topper">--</p>
+  </div>
+
+  <div class="box highlight">
+    <h3>Highest Score Ever</h3>
+    <p id="topScore">--</p>
+  </div>
+
+</div>
+
+<!-- TOP 3 -->
+<div class="top3" id="top3"></div>
+
+<!-- TABLE -->
+<table class="ranking">
+  <thead>
+    <tr>
+      <th>Rank</th>
+      <th>User</th>
+      <th>Avg</th>
+      <th>Last</th>
+      <th>Prev</th>
+      <th>Trend</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<script src="/static/analytics.js"></script>
+</body>
+</html>

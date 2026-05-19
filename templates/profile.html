@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Profile</title>
+
+<link rel="stylesheet" href="/static/profile.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+
+</head>
+
+<body>
+
+<div class="bg-glow glow1"></div>
+<div class="bg-glow glow2"></div>
+
+<div class="container">
+
+    <!-- LEFT -->
+    <div class="profile-card">
+
+        <div class="banner"></div>
+
+        <div class="avatar-box">
+
+            <img id="avatar" src="/static/default.png">
+
+            <label for="file" class="upload-btn">
+                <i class="fa-solid fa-camera"></i>
+            </label>
+
+            <input type="file" id="file" hidden>
+
+        </div>
+
+        <h1 id="username">User</h1>
+
+        <p class="rank" id="rankText">
+            Beginner
+        </p>
+
+        <!-- XP -->
+
+        <div class="xp-section">
+
+            <div class="xp-top">
+                <span id="levelText">Level 1</span>
+                <span id="xpText">0 / 100 XP</span>
+            </div>
+
+            <div class="xp-bar">
+                <div id="xpFill"></div>
+            </div>
+
+        </div>
+
+        <!-- STATS -->
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+                <h2 id="attempts">0</h2>
+                <p>Attempts</p>
+            </div>
+
+            <div class="stat-card">
+                <h2 id="avg">0%</h2>
+                <p>Accuracy</p>
+            </div>
+
+            <div class="stat-card">
+                <h2 id="wins">0</h2>
+                <p>Wins</p>
+            </div>
+
+        </div>
+
+        <!-- PROGRESS -->
+
+        <div class="progress-section">
+
+            <div class="progress-top">
+
+                <span>Roadmap Progress</span>
+
+                <span id="progressText">0%</span>
+
+            </div>
+
+            <div class="progress-box">
+
+                <div id="progressBar"></div>
+
+            </div>
+
+        </div>
+
+        <!-- STRONGEST -->
+
+        <div class="highlight-box">
+
+            <i class="fa-solid fa-trophy"></i>
+
+            <div>
+
+                <h3 id="bestTopic">None</h3>
+
+                <p>Strongest Topic</p>
+
+            </div>
+
+        </div>
+
+        <!-- DAILY CHALLENGE -->
+
+        <div class="challenge-card">
+
+            <div class="challenge-head">
+
+                <i class="fa-solid fa-bullseye"></i>
+
+                <h3>Daily Challenge</h3>
+
+            </div>
+
+            <p id="challengeText">
+                Solve 1 Graph Medium Problem
+            </p>
+
+            <div class="reward">
+                Reward: +20 XP
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- RIGHT -->
+
+    <div class="right-panel">
+
+        <!-- BADGES -->
+
+        <div class="glass-card">
+
+            <div class="section-title">
+
+                <i class="fa-solid fa-award"></i>
+
+                <h2>Achievements</h2>
+
+            </div>
+
+            <div id="badges" class="badge-grid"></div>
+
+        </div>
+
+        <!-- TOPICS -->
+
+        <div class="glass-card">
+
+            <div class="section-title">
+
+                <i class="fa-solid fa-chart-simple"></i>
+
+                <h2>Topic Analytics</h2>
+
+            </div>
+
+            <div id="topicStats" class="topic-grid"></div>
+
+        </div>
+
+        <!-- HISTORY -->
+
+        <div class="glass-card">
+
+            <div class="section-title">
+
+                <i class="fa-solid fa-clock-rotate-left"></i>
+
+                <h2>Recent Performance</h2>
+
+            </div>
+
+            <div id="sessionList" class="session-list"></div>
+
+        </div>
+
+        <!-- ROADMAP -->
+
+        <div class="glass-card">
+
+            <div class="section-title">
+
+                <i class="fa-solid fa-code"></i>
+
+                <h2>DSA Roadmap</h2>
+
+            </div>
+
+            <div id="roadmap" class="roadmap"></div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<button class="back-btn" onclick="goBack()">
+
+    <i class="fa-solid fa-arrow-left"></i>
+
+    Dashboard
+
+</button>
+
+<script src="/static/profile.js"></script>
+
+</body>
+</html>

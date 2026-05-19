@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Practice Arena</title>
+<link rel="stylesheet" href="/static/practice.css">
+</head>
+<body>
+
+<div class="bg"></div>
+
+<h1 class="title">Practice Arena</h1>
+<h2 id="welcome" class="welcome"></h2>
+
+<button class="back" onclick="goDashboard()"> Dashboard</button>
+<button class="logout" onclick="logout()">logout</button>
+
+<!-- 🔥 POPUP -->
+<div class="overlay" id="overlay">
+
+  <div class="popup">
+
+    <div class="tabs">
+      <span onclick="showLogin()" id="loginTab" class="active">Login</span>
+      <span onclick="showRegister()" id="registerTab">Register</span>
+    </div>
+
+    <div class="form loginForm">
+      <input id="loginName" placeholder="Enter nickname">
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div class="form registerForm">
+      <input id="registerName" placeholder="Create nickname">
+      <button onclick="register()">Register</button>
+    </div>
+
+    <p id="error" class="error"></p>
+
+  </div>
+
+</div>
+
+<!-- 🔥 ORIGINAL CARDS -->
+<div class="container" id="mainContent">
+
+  <div class="card" onclick="goSimulator()">
+    <h2>AI Interview Simulator</h2>
+    <p>Aptitude • Coding • HR</p>
+  </div>
+
+  <div class="card" onclick="gobuzzer()">
+    <h2>AI Battle</h2>
+    <p>Buzzer Round with Friend</p>
+  </div>
+
+  <div class="card" onclick="goFriend()">
+    <h2>Connect Friends</h2>
+    <p>Track Progress & Achievements</p>
+  </div>
+
+</div>
+
+
+<!-- 🔥 COMPANY POPUP -->
+<!-- 🔥 COMPANY POPUP -->
+<div class="companyOverlay" id="companyOverlay" onclick="closeCompanyPopup(event)">
+
+  <div class="companyBox" onclick="event.stopPropagation()">
+
+    <h2>Select Company</h2>
+
+    <div class="companyGrid">
+
+      <div class="company" onclick="selectCompany('Google', this)">Google</div>
+      <div class="company" onclick="selectCompany('Wipro', this)">Wipro</div>
+      <div class="company" onclick="selectCompany('Infosys', this)">Infosys</div>
+      <div class="company" onclick="selectCompany('TCS', this)">TCS</div>
+      <div class="company" onclick="selectCompany('Amazon', this)">Amazon</div>
+      <div class="company" onclick="selectCompany('Microsoft', this)">Microsoft</div>
+
+    </div>
+
+    <button onclick="startInterview()">Start</button>
+
+  </div>
+
+</div>
+
+
+<script src="/static/practice.js"></script>
+</body>
+</html>

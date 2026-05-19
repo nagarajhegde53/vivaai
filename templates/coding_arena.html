@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Coding Arena</title>
+
+  <link
+    rel="stylesheet"
+    href="/static/coding_arena.css"
+  >
+
+  <!-- MONACO -->
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
+
+</head>
+
+<body>
+
+  <!-- BACKGROUND -->
+  <div class="bg-blur blur1"></div>
+  <div class="bg-blur blur2"></div>
+
+  <!-- NAVBAR -->
+  <div class="navbar">
+
+    <button
+      class="back-btn"
+      onclick="goBack()"
+    >
+      ← Dashboard
+    </button>
+
+    <h1 class="title">
+      ⚡ Coding Arena
+    </h1>
+
+    <div class="navbar-right">
+
+      <div class="mentor-status">
+
+        <div class="online-dot"></div>
+
+        AI Mentor Active
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- TOPIC POPUP -->
+  <div id="popup" class="overlay">
+
+    <div class="popup-box">
+
+      <h2>Select Coding Topic</h2>
+
+      <p class="popup-sub">
+        AI will generate dynamic coding challenges.
+      </p>
+
+      <select id="topicSelect">
+
+        <option value="arrays">Arrays</option>
+
+        <option value="strings">Strings</option>
+
+        <option value="graph">Graph</option>
+
+        <option value="dp">
+          Dynamic Programming
+        </option>
+
+        <option value="queue">
+          Queue
+        </option>
+
+        <option value="tree">
+          Tree
+        </option>
+
+        <option value="recursion">
+          Recursion
+        </option>
+
+        <option value="backtracking">
+          Backtracking
+        </option>
+
+        <option value="stack">
+          Stack
+        </option>
+
+      </select>
+
+      <button
+        class="start-btn"
+        onclick="startArena()"
+      >
+        Start Arena
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- MAIN -->
+  <div
+    id="main"
+    class="main-layout hidden"
+  >
+
+    <!-- LEFT -->
+    <div class="question-panel">
+
+      <!-- TOP -->
+      <div class="question-top">
+
+        <span id="difficultyBadge">
+          EASY
+        </span>
+
+        <div class="timer-box">
+
+          ⏳
+
+          <span id="timer">
+            00:00
+          </span>
+
+        </div>
+
+      </div>
+
+      <!-- QUESTION -->
+      <h2 class="question-title">
+        Problem Statement
+      </h2>
+
+      <p
+        id="questionText"
+        class="question-text"
+      ></p>
+
+      <!-- INPUT -->
+      <div class="example-box">
+
+        <h3>Input</h3>
+
+        <pre id="inputBox"></pre>
+
+      </div>
+
+      <!-- STATS -->
+      <div class="arena-stats">
+
+        <div class="stat-card">
+
+          <h4>Solved</h4>
+
+          <span id="solvedCount">
+            0
+          </span>
+
+        </div>
+
+        <div class="stat-card">
+
+          <h4>Attempted</h4>
+
+          <span id="attemptedCount">
+            0
+          </span>
+
+        </div>
+
+        <div class="stat-card">
+
+          <h4>Runs</h4>
+
+          <span id="runCount">
+            0
+          </span>
+
+        </div>
+
+      </div>
+
+      <!-- AI ANALYSIS -->
+      <div class="analysis-panel">
+
+        <div class="analysis-top">
+
+          <h3>
+            AI Live Analysis
+          </h3>
+
+          <div
+            id="thinking"
+            class="thinking hidden"
+          >
+
+            <span></span>
+            <span></span>
+            <span></span>
+
+          </div>
+
+        </div>
+
+        <div id="liveAnalysis">
+
+          AI waiting for your coding approach...
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="editor-panel">
+
+      <!-- CONTROLS -->
+      <div class="editor-controls">
+
+        <!-- LEFT -->
+        <div class="left-controls">
+
+          <select id="language">
+
+            <option value="python">
+              Python
+            </option>
+
+          </select>
+
+        </div>
+
+        <!-- RIGHT -->
+        <div class="right-controls">
+
+          <button
+            class="run-btn"
+            onclick="runCode()"
+          >
+            ▶ Run
+          </button>
+
+          <button onclick="nextQuestion()">
+            Next
+          </button>
+
+          <!-- TIMER PAUSE -->
+          <button
+            id="pauseBtn"
+            onclick="togglePause()"
+          >
+            Pause Timer
+          </button>
+
+          <!-- AI PAUSE -->
+          <button
+            id="agentPauseBtn"
+            onclick="toggleAgentPause()"
+          >
+            Pause AI
+          </button>
+
+          <button
+            class="giveup-btn"
+            onclick="giveUp()"
+          >
+            Give Up
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- MONACO -->
+      <div id="editor"></div>
+
+      <!-- CONSOLE -->
+      <div class="console-box">
+
+        <div class="console-top">
+
+          <h3>Console Output</h3>
+
+          <span id="executionStatus">
+            Ready
+          </span>
+
+        </div>
+
+        <div id="output">
+
+          Waiting for execution...
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- AI CHAT -->
+  <div
+    id="aiBox"
+    class="ai-box hidden"
+  >
+
+    <!-- TOP -->
+    <div class="ai-header">
+
+      <img
+        src="/static/luffy.jpeg"
+        class="avatar"
+      >
+
+      <div>
+
+        <h3>AI Mentor</h3>
+
+        <p>
+          Watching your logic...
+        </p>
+
+      </div>
+
+    </div>
+
+    <!-- CHAT -->
+    <div
+      id="chatMessages"
+      class="chat-messages"
+    >
+
+    </div>
+
+    <!-- INPUT -->
+    <div class="chat-area">
+
+      <input
+        type="text"
+        id="chatInput"
+        placeholder="Ask coding doubts..."
+      >
+
+      <button onclick="sendChat()">
+        Send
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- RESULT -->
+  <div
+    id="resultOverlay"
+    class="overlay hidden"
+  >
+
+    <div class="result-card">
+
+      <h2 id="resultTitle">
+        Result
+      </h2>
+
+      <p id="resultMsg"></p>
+
+      <button
+        class="result-btn"
+        onclick="goBack()"
+      >
+        Back to Dashboard
+      </button>
+
+    </div>
+
+  </div>
+
+  <script src="/static/coding_arena.js"></script>
+
+</body>
+</html>

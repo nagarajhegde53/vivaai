@@ -1,0 +1,99 @@
+body{
+  font-family:sans-serif;
+  background:#eef3f8;
+  text-align:center;
+}
+
+.back{
+  position:absolute;
+  top:20px;
+  left:20px;
+}
+
+#formBox{
+  margin-top:80px;
+}
+
+input{
+  display:block;
+  margin:10px auto;
+  padding:10px;
+  width:250px;
+}
+
+#chatBox{
+  display:none;
+}
+
+/* CARD */
+.card{
+  width:80%;
+  max-width:500px;
+  margin:10px auto;
+  padding:10px;
+  background:white;
+  border-radius:10px;
+}
+
+/* TEXT BOX FIX */
+.speechBox{
+  max-height:120px;
+  overflow-y:auto;
+  word-wrap:break-word;
+  white-space:pre-wrap;
+  text-align:left;
+  padding:5px;
+}
+
+/* CHAT */
+#chat{
+  height:200px;
+  overflow:auto;
+  background:white;
+  margin:20px;
+  padding:10px;
+  border-radius:10px;
+}
+
+.msg{
+  margin:10px;
+  padding:10px;
+  border-radius:8px;
+}
+
+.hr{ background:#d1e7dd; }
+.me{ background:#f8d7da; }
+
+/* SCORE PANEL */
+.scorePanel{
+  width:80%;
+  max-width:500px;
+  margin:10px auto;
+  padding:10px;
+  background:white;
+  border-radius:10px;
+  display:flex;
+  justify-content:space-around;
+}
+
+/* RESULT */
+.overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  display:none;
+  justify-content:center;
+  align-items:center;
+  background:rgba(0,0,0,0.5);
+}
+
+.resultBox{
+  max-height:70vh;
+  overflow-y:auto;
+  background:white;
+  padding:20px;
+  width:400px;
+  border-radius:10px;
+}

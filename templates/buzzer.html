@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Battle</title>
+<link rel="stylesheet" href="/static/buzzer.css">
+</head>
+
+<body>
+
+<button class="back" onclick="goBack()">⬅ Back</button>
+
+<h2 id="title"></h2>
+
+<!-- TURN -->
+<div id="turn" class="turn"></div>
+
+<!-- QUESTION -->
+<div class="card">
+  <div id="question"></div>
+</div>
+
+<!-- OPTIONS -->
+<div id="options" class="options"></div>
+
+<!-- BUZZ -->
+<button class="buzz" onclick="buzz()">🔴 BUZZ</button>
+
+<!-- SCORE -->
+<div id="scoreboard" class="scoreboard"></div>
+
+<!-- CHAT -->
+<div class="chatBox">
+  <div id="chat"></div>
+  <input id="msg" placeholder="Type message">
+  <button onclick="sendChat()">Send</button>
+</div>
+
+<!-- WINNER -->
+<div id="winnerOverlay" class="overlay">
+  <div class="winnerBox">
+    <h1 id="winnerText"></h1>
+    <button onclick="goBack()">Back</button>
+  </div>
+</div>
+
+<script src="/static/buzzer.js"></script>
+</body>
+</html>

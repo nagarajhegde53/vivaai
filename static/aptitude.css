@@ -1,0 +1,100 @@
+body{
+  font-family:sans-serif;
+  text-align:center;
+  background:linear-gradient(135deg,#fdfaf6,#e3f2fd);
+}
+
+/* BUTTONS */
+.back{
+  position:absolute;
+  left:20px;
+  top:20px;
+}
+
+.pause{
+  position:absolute;
+  right:20px;
+  top:20px;
+}
+
+/* BOX */
+.box{
+  margin:50px auto;
+  padding:20px;
+  width:400px;
+  background:rgba(255,255,255,0.6);
+  backdrop-filter:blur(10px);
+  border-radius:12px;
+}
+
+/* OPTIONS */
+.opt{
+  margin:10px;
+  padding:10px;
+  background:#eee;
+  border-radius:8px;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.opt:hover{
+  background:#007bff;
+  color:white;
+}
+
+/* RESULT POPUP */
+/* BLUR BACKGROUND */
+
+
+/* OVERLAY FIX */
+.resultOverlay{
+  position:fixed;
+  top:0;
+  left:0;
+
+  width:100%;
+  height:100%;
+
+  display:none;
+  justify-content:center;
+
+  /* 🔥 IMPORTANT FIX */
+  align-items:flex-start;  
+
+  background:rgba(0,0,0,0.5);
+  z-index:999;
+
+  overflow-y:auto;          
+  padding:40px 10px;       
+}
+
+/* BOX FIX */
+.resultBox{
+  width:500px;
+  max-width:90%;
+
+  /* 🔥 IMPORTANT FIX */
+  max-height:85vh;         /* prevent overflow */
+  overflow-y:auto;         /* scroll inside */
+
+  padding:30px;
+
+  background:rgba(255,255,255,0.95);
+  border-radius:16px;
+
+  text-align:center;
+
+  animation:fadeIn 0.4s ease;
+}
+
+/* BUTTON (UNCHANGED STYLE) */
+.resultBox button{
+  margin-top:20px;
+  padding:12px;
+  width:70%;
+  border:none;
+  border-radius:8px;
+  background:#007bff;
+  color:white;
+  cursor:pointer;
+}

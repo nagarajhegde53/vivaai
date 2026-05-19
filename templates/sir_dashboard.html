@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Viva AI - Sir Dashboard</title>
+
+<link rel="stylesheet"
+href="/static/sir_dashboard.css">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="bg-animation"></div>
+
+<!-- NAVBAR -->
+
+<nav class="navbar">
+
+    <div class="logo">
+        Viva AI
+    </div>
+
+    <div class="nav-right">
+
+        <div class="live-status">
+
+            <span class="dot"></span>
+
+            Live
+
+        </div>
+
+        <div class="professor">
+            Professor
+        </div>
+
+        <button
+        id="logoutBtn"
+        class="logout-btn">
+
+            <i class="fa-solid fa-right-from-bracket"></i>
+
+            Logout
+
+        </button>
+
+    </div>
+
+</nav>
+
+
+<!-- MAIN -->
+
+<div class="dashboard">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-title">
+            Students
+        </div>
+
+        <!-- DYNAMIC STUDENTS -->
+
+        <div class="student-list"></div>
+
+    </aside>
+
+
+    <!-- CENTER PANEL -->
+
+    <main class="center-panel">
+
+        <!-- VIDEO -->
+
+        <section class="video-section glass">
+
+            <div class="section-header">
+
+                <h2>Live Viva</h2>
+
+                <div class="connection">
+                    Connected
+                </div>
+
+            </div>
+
+            <div class="video-box">
+                <audio
+id="remoteAudio"
+autoplay>
+</audio>
+
+                <video autoplay muted></video>
+
+                <div class="wave-container">
+
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- QUESTION -->
+
+        <section class="question-section glass">
+
+            <div class="section-header">
+
+                <h2>Ask Question</h2>
+
+            </div>
+
+            <div class="question-box">
+
+                <textarea
+                id="questionInput"
+                name="questionInput"
+                placeholder="Voice question will appear here...">
+                </textarea>
+
+                <div class="question-actions">
+                    <button
+id="voiceChatBtn"
+class="secondary-btn">
+
+    <i class="fa-solid fa-headset"></i>
+
+    Start Voice
+
+</button>
+<button
+id="muteBtn"
+class="secondary-btn">
+
+    <i class="fa-solid fa-microphone-slash"></i>
+
+    Mute
+
+</button>
+
+                    <!-- MIC BUTTON -->
+
+                    <button
+                    id="voiceQuestionBtn"
+                    class="secondary-btn">
+
+                        <i class="fa-solid fa-microphone"></i>
+
+                        Voice Ask
+
+                    </button>
+
+                    <!-- AI FOLLOWUP -->
+
+                    <button
+                    class="secondary-btn">
+
+                        <i class="fa-solid fa-robot"></i>
+
+                        AI Follow-Up
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- LIVE TRANSCRIPT -->
+
+        <section class="transcript glass">
+
+            <div class="section-header">
+
+                <h2>Live Transcript</h2>
+
+            </div>
+
+            <!-- DYNAMIC TRANSCRIPT -->
+
+            <div class="transcript-box"></div>
+
+        </section>
+
+    </main>
+
+
+    <!-- RIGHT PANEL -->
+
+    <aside class="right-panel">
+
+        <!-- AI ANALYSIS -->
+
+        <section class="analysis glass">
+
+            <div class="section-header">
+
+                <h2>AI Analysis</h2>
+
+            </div>
+
+            <div class="metric">
+
+                <span>Confidence</span>
+
+                <div class="bar">
+
+                    <div style="width:82%"></div>
+
+                </div>
+
+            </div>
+
+            <div class="metric">
+
+                <span>Communication</span>
+
+                <div class="bar">
+
+                    <div style="width:74%"></div>
+
+                </div>
+
+            </div>
+
+            <div class="metric">
+
+                <span>Understanding</span>
+
+                <div class="bar">
+
+                    <div style="width:91%"></div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- MONITORING -->
+
+        <section class="cheating glass">
+
+            <div class="section-header">
+
+                <h2>Monitoring</h2>
+
+            </div>
+
+            <div class="warning">
+                ⚠ Looking Away Frequently
+            </div>
+
+            <div class="warning safe">
+                ✅ No Tab Switching
+            </div>
+
+            <div class="warning">
+                ⚠ Multiple Face Detection
+            </div>
+
+        </section>
+
+
+        <!-- CHAT -->
+
+        <section class="chat glass">
+
+            <div class="section-header">
+
+                <h2>Live Chat</h2>
+
+            </div>
+
+            <!-- DYNAMIC CHAT -->
+
+            <div class="chat-box"></div>
+
+            <div class="chat-input">
+
+                <input
+                id="chatInput"
+                name="chatInput"
+                type="text"
+                placeholder="Type message...">
+
+                <button>
+
+                    <i class="fa-solid fa-paper-plane"></i>
+
+                </button>
+
+            </div>
+
+        </section>
+
+    </aside>
+
+</div>
+
+
+<!-- MOBILE NAV -->
+
+<div class="mobile-nav">
+
+    <button>
+
+        <i class="fa-solid fa-users"></i>
+
+    </button>
+
+    <button>
+
+        <i class="fa-solid fa-video"></i>
+
+    </button>
+
+    <button>
+
+        <i class="fa-solid fa-chart-line"></i>
+
+    </button>
+
+    <button>
+
+        <i class="fa-solid fa-comments"></i>
+
+    </button>
+
+</div>
+
+
+<!-- JS -->
+
+<script src="/static/sir_dashboard.js"></script>
+
+</body>
+</html>

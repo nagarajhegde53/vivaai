@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Dashboard - Viva AI</title>
+<link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="container">
+
+<!-- SIDE COLUMN -->
+<div class="side-column">
+  <!-- CODING ARENA SIDE CARD -->
+<div class="side-card-left" onclick="go('coding-arena')">
+  <h3> Coding Arena</h3>
+  <p>AI DSA Challenges</p>
+</div>
+
+
+<!-- LETS BUILD -->
+<div class="side-card-left" onclick="go('dsa')">
+  <h3> Let's Build</h3>
+  <p>Interactive AI DSA Classroom</p>
+</div>
+<!--  -->
+<!-- profile -->
+   <div class="side-card-left" onclick="go('profile')">
+    <h3> Profile</h3>
+    <p>Your stats & progress</p>
+  </div>
+
+  </div>
+<!-- end -->
+ 
+  <h1 class="title">Welcome, <span id="username">User</span></h1>
+
+  <div class="grid">
+
+    <!-- <div class="card" onclick="go('viva')">
+      <h2>Start Viva</h2>
+      <p>Begin AI-powered oral exam</p>
+    </div> -->
+    <div class="card" onclick="go('viva')()">
+  <h2>Start Viva</h2>
+  <p>take viva with sir</p>
+</div>
+
+
+    <div class="card" onclick="go('practice')">
+      <h2>Practice Mode</h2>
+      <p>Improve with mock questions</p>
+    </div>
+
+    <div class="card" onclick="go('analytics')">
+      <h2>analytics</h2>
+      <p>View scores and performance</p>
+    </div>
+
+    <div class="card" onclick="go('suggestions')">
+      <h2>comparison</h2>
+      <p>compare with topper</p>
+    </div>
+
+  </div>
+
+  <button class="logout" onclick="logout()">Logout</button>
+
+</div>
+<!-- VIVA ACCESS POPUP -->
+<!-- <div id="vivaOverlay" class="overlay">
+
+  <div class="popup">
+
+    <h2>Secure Access</h2>
+    <p>Enter Secret Code to Start Viva</p>
+
+    <input type="password" id="vivaCode" placeholder="Enter code..." />
+
+    <div class="btns">
+      <button class="btn start" onclick="verifyViva()">Enter</button>
+      <button class="btn cancel" onclick="closeVivaPopup()">Cancel</button>
+    </div>
+
+    <p id="errorMsg"></p>
+
+  </div>
+
+</div> -->
+
+<script src="/static/dashboard.js"></script>
+</body>
+</html>

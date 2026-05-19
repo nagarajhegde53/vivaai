@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Result - Viva AI</title>
+<link rel="stylesheet" href="/static/result.css">
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="container">
+
+  <h1 class="title">Your Performance</h1>
+
+  <div class="grid">
+
+    <div class="card score">
+      <h2>Score</h2>
+      <p id="score">--</p>
+    </div>
+
+    <div class="card strong">
+      <h2>Strong Areas</h2>
+      <p id="strong">--</p>
+    </div>
+
+    <div class="card weak">
+      <h2>Weak Areas</h2>
+      <p id="weak">--</p>
+    </div>
+
+  </div>
+
+  <div class="suggestions">
+    <h2>AI Feedback</h2>
+    <p id="suggestions">--</p>
+  </div>
+
+</div>
+
+<!-- BACK BUTTONS -->
+<button class="back-dashboard" onclick="goDashboard()">Dashboard</button>
+<button class="back-viva" onclick="goViva()">Viva</button>
+
+<script src="/static/result.js"></script>
+</body>
+</html>

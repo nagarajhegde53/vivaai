@@ -1,0 +1,106 @@
+body{
+  background:#fdfaf6;
+  font-family:sans-serif;
+  color:#333;
+}
+
+/* TITLE */
+h1{
+  text-align:center;
+  margin:20px;
+  animation:fadeDown 0.8s ease;
+}
+
+/* BACK */
+.back{
+  position:absolute;
+  top:20px;
+  left:20px;
+}
+
+/* CARD */
+.card{
+  width:70%;
+  margin:20px auto;
+  background:rgba(255,255,255,0.6);
+  backdrop-filter:blur(12px);
+  padding:20px;
+  border-radius:12px;
+
+  transition:0.3s;
+  animation:fadeUp 0.8s ease;
+}
+
+.card:hover{
+  transform:scale(1.02);
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* COMPARE */
+.scores{
+  display:flex;
+  justify-content:space-around;
+}
+
+.score-box{
+  text-align:center;
+  padding:10px;
+  transition:0.3s;
+}
+
+.score-box:hover{
+  transform:scale(1.1);
+}
+
+.topper{
+  border:2px solid gold;
+}
+
+/* SKILLS */
+.skills{
+  display:flex;
+  justify-content:center;
+  gap:40px;
+}
+
+.box{
+  background:rgba(255,255,255,0.6);
+  padding:20px;
+  border-radius:12px;
+  transition:0.3s;
+}
+
+.box:hover{
+  transform:scale(1.05);
+}
+
+.circles{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:15px;
+}
+
+.c{
+  text-align:center;
+}
+
+.circle{
+  width:80px;
+  height:80px;
+  border-radius:50%;
+  background:conic-gradient(#4fc3f7 0deg,#ddd 0deg);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* ANIM */
+@keyframes fadeUp{
+  from{opacity:0; transform:translateY(30px);}
+  to{opacity:1;}
+}
+
+@keyframes fadeDown{
+  from{opacity:0; transform:translateY(-20px);}
+  to{opacity:1;}
+}

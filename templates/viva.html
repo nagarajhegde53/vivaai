@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Viva AI</title>
+
+<link rel="stylesheet"
+href="/static/viva.css">
+
+</head>
+
+<body>
+
+<!-- BACK -->
+
+<button
+class="back"
+onclick="goBack()">
+
+    ⬅ Dashboard
+
+</button>
+
+
+<!-- START SCREEN -->
+
+<div
+class="start"
+id="startScreen">
+
+    <h1>Viva AI</h1>
+
+    <button id="startBtn">
+
+        Start Viva
+
+    </button>
+
+</div>
+
+
+<!-- MAIN -->
+
+<div
+class="wrapper"
+id="main">
+
+    <!-- LEFT PANEL -->
+
+    <div class="box">
+
+        <!-- STUDENT CAMERA -->
+
+        <div class="video-section">
+
+            <video
+            id="studentVideo"
+            autoplay
+            muted
+            playsinline>
+            </video>
+
+            <div class="video-overlay">
+
+                <span class="live-dot"></span>
+
+                LIVE
+
+            </div>
+
+        </div>
+
+
+        <!-- LIVE CHAT / TRANSCRIPT -->
+
+        <div
+        class="chat"
+        id="chatBox">
+        </div>
+
+
+        <!-- CONTROLS -->
+
+        <div class="controls">
+
+            <!-- RECORD QUESTION -->
+
+            <button id="recordQ">
+
+                Record Question
+
+            </button>
+
+            <!-- RECORD ANSWER -->
+
+            <button id="recordA">
+
+                Record Answer
+
+            </button>
+
+            <!-- STOP -->
+
+            <button id="stop">
+
+                Stop
+
+            </button>
+
+            <!-- STORE -->
+
+            <button id="store">
+
+                Store Q&A
+
+            </button>
+
+            <!-- SUBMIT -->
+
+            <button id="submit">
+
+                Submit
+
+            </button>
+
+            <!-- MUTE -->
+
+            <button id="muteBtn">
+
+                Mute
+
+            </button>
+
+        </div>
+
+
+        <!-- ERRORS -->
+
+        <p
+        id="errorBox"
+        class="error">
+        </p>
+
+    </div>
+
+
+    <!-- RIGHT PANEL -->
+
+    <div class="stored">
+
+        <h2>
+
+            Stored Q&A
+
+        </h2>
+
+        <div id="storedBox"></div>
+
+    </div>
+
+</div>
+
+
+<!-- REMOTE AUDIO -->
+
+<audio
+id="remoteAudio"
+autoplay>
+</audio>
+
+
+<!-- WEBSOCKET STATUS -->
+
+<div class="socket-status">
+
+    <span class="status-dot"></span>
+
+    Connected
+
+</div>
+
+
+<!-- SIR VOICE POPUP -->
+
+<div
+id="voicePopup"
+class="voice-popup">
+
+    <div class="voice-popup-box">
+
+        <h3>
+
+            Professor Started Voice Chat
+
+        </h3>
+
+        <p>
+
+            Enable your microphone and camera
+            to continue viva communication.
+
+        </p>
+
+        <button
+        id="enableVoiceBtn">
+
+            Enable Voice
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- JS -->
+
+<script src="/static/viva.js"></script>
+
+</body>
+</html>

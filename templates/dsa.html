@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>DSA Visualizer</title>
+
+    <link rel="stylesheet" href="/static/dsa.css" />
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+
+</head>
+
+<body>
+
+    <!-- POPUP -->
+
+    <div class="topic-popup" id="topicPopup">
+
+        <div class="popup-box">
+
+            <h1>Select Data Structure</h1>
+
+            <p>
+                Choose a topic to initialize renderer, rules,
+                animations and AI context.
+            </p>
+
+            <div class="topic-grid">
+
+                <button class="topic-card">Array</button>
+                <button class="topic-card">String</button>
+                <button class="topic-card">Stack</button>
+                <button class="topic-card">Queue</button>
+                <button class="topic-card">Linked List</button>
+                <button class="topic-card">Graph</button>
+                <button class="topic-card">Tree</button>
+                <!-- <button class="topic-card">Heap</button>
+                <button class="topic-card">BST</button> -->
+                <button class="topic-card">HashMap</button>
+
+            </div>
+
+            <button id="continueBtn" class="continue-btn">
+                Continue
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- TOPBAR -->
+
+    <header class="topbar">
+
+        <div class="left-top">
+
+            <button class="top-btn" id="backBtn">
+
+                <i class="fa-solid fa-arrow-left"></i>
+
+                Dashboard
+
+            </button>
+
+            <div class="logo">
+
+                <div class="logo-dot"></div>
+
+                <h2>DSA Visualizer</h2>
+
+            </div>
+
+        </div>
+
+        <div class="top-controls">
+
+            <button class="top-btn run-btn">
+
+                <i class="fa-solid fa-play"></i>
+
+                Run
+
+            </button>
+
+            <button class="top-btn">
+
+                <i class="fa-solid fa-pause"></i>
+
+                Pause
+
+            </button>
+
+            <button class="top-btn">
+
+                <i class="fa-solid fa-rotate-left"></i>
+
+                Reset
+
+            </button>
+
+        </div>
+
+    </header>
+
+    <!-- MAIN -->
+
+    <main class="main-layout">
+
+        <!-- EDITOR -->
+
+        <section class="editor-panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <i class="fa-solid fa-code"></i>
+
+                    Editor
+
+                </div>
+
+                <div class="live-status">
+
+                    <div class="status-dot"></div>
+
+                    Live Parsing
+
+                </div>
+
+            </div>
+            <textarea
+    id="editor"
+    placeholder="Write DSA pseudo code here..."
+></textarea>
+
+
+        </section>
+
+        <!-- VISUALIZER -->
+
+        <section class="visualizer-panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <i class="fa-solid fa-diagram-project"></i>
+
+                    Visualizer
+
+                </div>
+
+                <div id="selectedDsText">
+                    No DS Selected
+                </div>
+
+            </div>
+
+            <div class="visualizer-area" id="visualizerArea">
+                <!-- new -->
+                 <div id="graph-helper-panel"
+     class="graph-helper-panel">
+</div>
+<!-- new traverasal -->
+ <div id="graph-result-panel"
+     class="graph-result-panel">
+</div>
+<!-- end  -->
+            </div>
+
+        </section>
+
+        <!-- AI -->
+
+        <section class="ai-panel">
+
+            <div class="panel-header">
+
+                <div class="panel-title">
+
+                    <i class="fa-solid fa-robot"></i>
+
+                    AI Companion
+
+                </div>
+
+                <div class="ai-state">
+
+                    Active
+
+                </div>
+
+            </div>
+
+            <!-- AI CONTROLS -->
+
+            <div class="ai-controls">
+
+                <button class="ai-btn" id="micBtn">
+
+                    <i class="fa-solid fa-microphone"></i>
+
+                </button>
+
+                <button class="ai-btn" id="muteBtn">
+
+                    <i class="fa-solid fa-volume-high"></i>
+
+                </button>
+
+                <button class="ai-btn" id="pauseAiBtn">
+
+                    <i class="fa-solid fa-pause"></i>
+
+                </button>
+
+            </div>
+
+            <!-- CHAT -->
+
+            <div class="chat-box" id="chatBox">
+
+                <div class="ai-message">
+                    Welcome back. Select a data structure to begin.
+                </div>
+
+            </div>
+
+            <!-- INPUT -->
+
+            <div class="chat-input-area">
+
+                <input
+                    type="text"
+                    id="chatInput"
+                    placeholder="Ask AI something..."
+                />
+
+                <button id="sendBtn">
+
+                    <i class="fa-solid fa-paper-plane"></i>
+
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- TIMELINE -->
+
+    <section class="timeline-panel">
+
+        <div class="timeline-title">
+
+            Execution Timeline
+
+        </div>
+
+        <div class="timeline-content" id="timelineContent">
+
+        </div>
+
+    </section>
+
+    <script src="/static/dsa.js"></script>
+
+</body>
+
+</html>

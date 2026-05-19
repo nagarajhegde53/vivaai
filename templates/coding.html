@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Coding Round</title>
+<link rel="stylesheet" href="/static/coding.css">
+</head>
+
+<body>
+
+<!-- MAIN CONTENT -->
+<div id="mainContent">
+
+  <!-- NAV BUTTONS -->
+  <button class="back left" onclick="goBack()">← Apti</button>
+  <button class="back right" onclick="goPractice()">🏠</button>
+
+  <h2 id="company"></h2>
+  <h3 id="timer">5:00</h3>
+
+  <!-- PAUSE -->
+  <button class="pause" onclick="togglePause()">⏸ Pause</button>
+
+  <div class="box">
+
+    <h3 id="question">Loading...</h3>
+
+    <div class="opt" onclick="selectOption(this)"></div>
+    <div class="opt" onclick="selectOption(this)"></div>
+    <div class="opt" onclick="selectOption(this)"></div>
+    <div class="opt" onclick="selectOption(this)"></div>
+
+  </div>
+
+  <button onclick="skip()">Skip</button>
+
+</div>
+
+<!-- RESULT POPUP -->
+<div id="resultOverlay" class="overlay">
+
+  <div class="resultBox">
+
+    <h2 id="resultText"></h2>
+
+    <div id="analysis"></div>
+
+    <button id="nextBtn"></button>
+
+  </div>
+
+</div>
+
+<script src="/static/coding.js"></script>
+
+</body>
+</html>
