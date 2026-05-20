@@ -116,6 +116,10 @@ let socket = null;
 
 let recognition = null;
 
+let reconnectTimeout = null;
+
+let reconnecting = false;
+
 let mode = null;
 
 let tempQuestion = "";
@@ -128,9 +132,7 @@ let currentBubbleA = null;
 
 let qaList = [];
 
-let reconnectTimeout = null;
-
-let reconnecting = false;
+let muted = false;
 
 
 /* =========================
@@ -140,8 +142,6 @@ let reconnecting = false;
 let localStream = null;
 
 let peerConnection = null;
-
-let muted = false;
 
 let pendingCandidates = [];
 
@@ -167,7 +167,9 @@ const rtcConfig = {
 
     rtcpMuxPolicy:"require",
 
-    iceCandidatePoolSize:10
+    iceCandidatePoolSize:10,
+
+    sdpSemantics:"unified-plan"
 
 };
 
@@ -195,6 +197,14 @@ startBtn.onclick = () => {
 
 function connectSocket(){
 
+    if(socket){
+
+        socket.onclose = null;
+
+        socket.close();
+
+    }
+
     const protocol =
 
     window.location.protocol ===
@@ -208,35 +218,47 @@ function connectSocket(){
 
     "ws";
 
-    const socketUrl =
-
-    `${protocol}://${window.location.host}/ws/viva/${user.room_id}`;
-
-    console.log(
-        "Connecting:",
-        socketUrl
-    );
-
     socket =
     new WebSocket(
-        socketUrl
+
+        `${protocol}://${window.location.host}/ws/viva/${user.room_id}`
+
     );
 
     socket.onopen = () => {
 
         console.log(
-            "Student Connected"
+            "Connected"
         );
 
         reconnecting = false;
 
-        if(reconnectTimeout){
+        createSystemMessage(
+            "Connected to viva room"
+        );
 
-            clearTimeout(
-                reconnectTimeout
-            );
+        // KEEP RENDER ALIVE
 
-        }
+        setInterval(() => {
+
+            if(
+                socket &&
+                socket.readyState === 1
+            ){
+
+                socket.send(
+
+                    JSON.stringify({
+
+                        type:"ping"
+
+                    })
+
+                );
+
+            }
+
+        }, 20000);
 
     };
 
@@ -329,6 +351,36 @@ function connectSocket(){
         }
 
         /* =====================
+           SIR STARTED TALKING
+        ===================== */
+
+        if(
+            msg.type ===
+            "sir-speaking"
+        ){
+
+            createSystemMessage(
+                "Professor started speaking"
+            );
+
+        }
+
+        /* =====================
+           SIR STOPPED TALKING
+        ===================== */
+
+        if(
+            msg.type ===
+            "sir-stopped-speaking"
+        ){
+
+            createSystemMessage(
+                "Professor stopped speaking"
+            );
+
+        }
+
+        /* =====================
            SIR MIC ON
         ===================== */
 
@@ -355,7 +407,7 @@ function connectSocket(){
 
                 if(!webrtcStarted){
 
-                    await startStudentMedia();
+                    await startMedia();
 
                 }
 
@@ -375,7 +427,7 @@ function connectSocket(){
 
                 }
 
-                // APPLY ICE
+                // APPLY PENDING ICE
 
                 for(
                     const candidate
@@ -514,7 +566,7 @@ async () => {
     voicePopup.style.display =
     "none";
 
-    await startStudentMedia();
+    await startMedia();
 
 };
 
@@ -523,9 +575,15 @@ async () => {
    START MEDIA
 ========================= */
 
-async function startStudentMedia(){
+async function startMedia(){
 
     try{
+
+        if(peerConnection){
+
+            stopWebRTC();
+
+        }
 
         localStream =
         await navigator
@@ -557,15 +615,17 @@ async function startStudentMedia(){
 
                 noiseSuppression:true,
 
-                autoGainControl:true
+                autoGainControl:true,
+
+                sampleRate:48000,
+
+                channelCount:1
 
             }
 
         });
 
         webrtcStarted = true;
-
-        // HIDDEN LOCAL VIDEO
 
         studentVideo.srcObject =
         localStream;
@@ -584,16 +644,23 @@ async function startStudentMedia(){
 
         });
 
-        socket.send(
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
 
-            JSON.stringify({
+            socket.send(
 
-                type:
-                "student-camera-on"
+                JSON.stringify({
 
-            })
+                    type:
+                    "student-camera-on"
 
-        );
+                })
+
+            );
+
+        }
 
     }catch(err){
 
@@ -603,7 +670,7 @@ async function startStudentMedia(){
         );
 
         errorBox.innerText =
-        "Camera or microphone permission denied";
+        "Camera or microphone access denied";
 
     }
 
@@ -621,6 +688,10 @@ function createPeerConnection(){
         rtcConfig
     );
 
+    /* =====================
+       RECEIVE AUDIO
+    ===================== */
+
     peerConnection.ontrack =
     async (event) => {
 
@@ -628,6 +699,8 @@ function createPeerConnection(){
 
             const remoteStream =
             event.streams[0];
+
+            // PREVENT DUPLICATE AUDIO
 
             if(
                 remoteAudio.srcObject ===
@@ -640,6 +713,15 @@ function createPeerConnection(){
 
             remoteAudio.srcObject =
             remoteStream;
+
+            remoteAudio.autoplay =
+            true;
+
+            remoteAudio.playsInline =
+            true;
+
+            remoteAudio.muted =
+            false;
 
             try{
 
@@ -659,12 +741,17 @@ function createPeerConnection(){
 
     };
 
+    /* =====================
+       ICE
+    ===================== */
+
     peerConnection.onicecandidate =
     (event) => {
 
         if(
             event.candidate &&
-            socket
+            socket &&
+            socket.readyState === 1
         ){
 
             socket.send(
@@ -685,6 +772,10 @@ function createPeerConnection(){
 
     };
 
+    /* =====================
+       CONNECTION STATE
+    ===================== */
+
     peerConnection.onconnectionstatechange =
     () => {
 
@@ -695,8 +786,30 @@ function createPeerConnection(){
         }
 
         console.log(
-
             peerConnection.connectionState
+        );
+
+    };
+
+    /* =====================
+       ICE STATE
+    ===================== */
+
+    peerConnection.oniceconnectionstatechange =
+    () => {
+
+        if(!peerConnection){
+
+            return;
+
+        }
+
+        console.log(
+
+            "ICE:",
+
+            peerConnection
+            .iceConnectionState
 
         );
 
@@ -733,17 +846,25 @@ function stopWebRTC(){
 
     }
 
-    studentVideo.srcObject =
-    null;
+    if(studentVideo){
 
-    remoteAudio.srcObject =
-    null;
+        studentVideo.srcObject =
+        null;
+
+    }
+
+    if(remoteAudio){
+
+        remoteAudio.srcObject =
+        null;
+
+    }
+
+    pendingCandidates = [];
 
     muted = false;
 
     webrtcStarted = false;
-
-    pendingCandidates = [];
 
 }
 
@@ -802,18 +923,25 @@ if(
 
             );
 
-            socket.send(
+            if(
+                socket &&
+                socket.readyState === 1
+            ){
 
-                JSON.stringify({
+                socket.send(
 
-                    type:
-                    "answer",
+                    JSON.stringify({
 
-                    text:text
+                        type:
+                        "answer",
 
-                })
+                        text:text
 
-            );
+                    })
+
+                );
+
+            }
 
         }
 
@@ -1035,18 +1163,22 @@ async () => {
 
             stopWebRTC();
 
-            socket.send(
+            if(socket){
 
-                JSON.stringify({
+                socket.send(
 
-                    type:
-                    "student-left"
+                    JSON.stringify({
 
-                })
+                        type:
+                        "student-left"
 
-            );
+                    })
 
-            socket.close();
+                );
+
+                socket.close();
+
+            }
 
             window.location.href =
             "/result";
