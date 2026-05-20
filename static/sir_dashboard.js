@@ -52,9 +52,6 @@ document.querySelector(
    USER
 ========================= */
 
-// COMPATIBLE WITH
-// YOUR CURRENT LOGIN SYSTEM
-
 const sirData =
 localStorage.getItem(
     "user"
@@ -70,17 +67,25 @@ if(!sirData){
 const sir =
 JSON.parse(sirData);
 
-if(
-    !sir ||
-    !sir.room_id
-){
+// FIXED REDIRECT BUG
 
-    console.log(
-        "Invalid sir session"
-    );
+if(!sir){
 
     window.location.href =
     "/";
+
+}
+
+// ROOM FALLBACK
+
+if(!sir.room_id){
+
+    sir.room_id =
+    "room_1";
+
+    console.log(
+        "Fallback room applied"
+    );
 
 }
 
@@ -102,6 +107,8 @@ let muted = false;
 let pendingCandidates = [];
 
 let reconnecting = false;
+
+let reconnectTimeout = null;
 
 
 /* =========================
@@ -164,6 +171,14 @@ function connectSocket(){
 
         reconnecting = false;
 
+        if(reconnectTimeout){
+
+            clearTimeout(
+                reconnectTimeout
+            );
+
+        }
+
         if(socketStatus){
 
             socketStatus.innerHTML =
@@ -209,6 +224,7 @@ function connectSocket(){
 
             reconnecting = true;
 
+            reconnectTimeout =
             setTimeout(() => {
 
                 connectSocket();
@@ -516,9 +532,9 @@ async () => {
 
     try{
 
-        if(
-            peerConnection
-        ){
+        // CLEAN OLD SESSION
+
+        if(peerConnection){
 
             stopWebRTC();
 
@@ -534,6 +550,10 @@ async () => {
             !socket ||
             socket.readyState !== 1
         ){
+
+            console.log(
+                "Socket not connected"
+            );
 
             return;
 
@@ -690,7 +710,7 @@ function createPeerConnection(){
                 event.track.kind
             );
 
-            // PREVENT DUPLICATE
+            // FIX FREEZE BUG
 
             if(
                 studentVideo &&

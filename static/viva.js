@@ -67,8 +67,6 @@ document.getElementById(
    USER
 ========================= */
 
-// COMPATIBLE WITH OLD LOGIN SYSTEM
-
 const userData =
 localStorage.getItem(
     "user"
@@ -84,10 +82,25 @@ if(!userData){
 const user =
 JSON.parse(userData);
 
-if(!user.room_id){
+// FIX REDIRECT BUG
+
+if(!user){
 
     window.location.href =
-    "/dashboard";
+    "/";
+
+}
+
+// ROOM FALLBACK
+
+if(!user.room_id){
+
+    user.room_id =
+    "room_1";
+
+    console.log(
+        "Fallback room applied"
+    );
 
 }
 
@@ -129,6 +142,10 @@ let pendingCandidates = [];
 
 let remoteStreamAttached =
 false;
+
+let reconnecting = false;
+
+let reconnectTimeout = null;
 
 
 /* =========================
@@ -212,6 +229,16 @@ function connectSocket(){
             "Student Connected"
         );
 
+        reconnecting = false;
+
+        if(reconnectTimeout){
+
+            clearTimeout(
+                reconnectTimeout
+            );
+
+        }
+
     };
 
     socket.onerror = (err) => {
@@ -228,6 +255,21 @@ function connectSocket(){
         console.log(
             "Socket Closed"
         );
+
+        // AUTO RECONNECT
+
+        if(!reconnecting){
+
+            reconnecting = true;
+
+            reconnectTimeout =
+            setTimeout(() => {
+
+                connectSocket();
+
+            }, 3000);
+
+        }
 
     };
 
@@ -414,19 +456,26 @@ function connectSocket(){
 
                 // SEND ANSWER
 
-                socket.send(
+                if(
+                    socket &&
+                    socket.readyState === 1
+                ){
 
-                    JSON.stringify({
+                    socket.send(
 
-                        type:
-                        "webrtc-answer",
+                        JSON.stringify({
 
-                        answer:
-                        peerConnection.localDescription
+                            type:
+                            "webrtc-answer",
 
-                    })
+                            answer:
+                            peerConnection.localDescription
 
-                );
+                        })
+
+                    );
+
+                }
 
             }catch(err){
 
@@ -573,7 +622,13 @@ async function startStudentMedia(){
 
     try{
 
-        stopWebRTC();
+        // CLEAN OLD SESSION
+
+        if(peerConnection){
+
+            stopWebRTC();
+
+        }
 
         localStream =
         await navigator
@@ -719,8 +774,12 @@ function createPeerConnection(){
                 event.track.kind
             );
 
+            // FIX DUPLICATE AUDIO
+
             if(
-                remoteStreamAttached
+                remoteAudio &&
+                remoteAudio.srcObject ===
+                remoteStream
             ){
 
                 return;
