@@ -120,6 +120,8 @@ let reconnectTimeout = null;
 
 let reconnecting = false;
 
+let heartbeat = null;
+
 let mode = null;
 
 let tempQuestion = "";
@@ -186,6 +188,27 @@ startBtn.onclick = () => {
     main.style.display =
     "flex";
 
+    main.style.visibility =
+    "visible";
+
+    main.style.opacity =
+    "1";
+
+    // SHOW BUTTONS
+
+    const controls =
+    document.querySelector(
+        ".controls"
+    );
+
+    if(controls){
+
+        controls.classList.add(
+            "show"
+        );
+
+    }
+
     connectSocket();
 
 };
@@ -237,8 +260,19 @@ function connectSocket(){
             "Connected to viva room"
         );
 
+        // CLEAR OLD HEARTBEAT
+
+        if(heartbeat){
+
+            clearInterval(
+                heartbeat
+            );
+
+        }
+
         // KEEP RENDER ALIVE
 
+        heartbeat =
         setInterval(() => {
 
             if(
@@ -351,7 +385,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR STARTED TALKING
+           SIR SPEAKING
         ===================== */
 
         if(
@@ -366,7 +400,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR STOPPED TALKING
+           SIR STOPPED
         ===================== */
 
         if(
@@ -381,7 +415,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR MIC ON
+           MIC ON
         ===================== */
 
         if(
@@ -526,16 +560,14 @@ function connectSocket(){
 
             }catch(err){
 
-                console.log(
-                    err
-                );
+                console.log(err);
 
             }
 
         }
 
         /* =====================
-           VOICE END
+           END VOICE
         ===================== */
 
         if(
@@ -644,23 +676,16 @@ async function startMedia(){
 
         });
 
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
+        socket.send(
 
-            socket.send(
+            JSON.stringify({
 
-                JSON.stringify({
+                type:
+                "student-camera-on"
 
-                    type:
-                    "student-camera-on"
+            })
 
-                })
-
-            );
-
-        }
+        );
 
     }catch(err){
 
@@ -670,7 +695,7 @@ async function startMedia(){
         );
 
         errorBox.innerText =
-        "Camera or microphone access denied";
+        "Camera or microphone permission denied";
 
     }
 
@@ -688,10 +713,6 @@ function createPeerConnection(){
         rtcConfig
     );
 
-    /* =====================
-       RECEIVE AUDIO
-    ===================== */
-
     peerConnection.ontrack =
     async (event) => {
 
@@ -699,8 +720,6 @@ function createPeerConnection(){
 
             const remoteStream =
             event.streams[0];
-
-            // PREVENT DUPLICATE AUDIO
 
             if(
                 remoteAudio.srcObject ===
@@ -741,10 +760,6 @@ function createPeerConnection(){
 
     };
 
-    /* =====================
-       ICE
-    ===================== */
-
     peerConnection.onicecandidate =
     (event) => {
 
@@ -772,10 +787,6 @@ function createPeerConnection(){
 
     };
 
-    /* =====================
-       CONNECTION STATE
-    ===================== */
-
     peerConnection.onconnectionstatechange =
     () => {
 
@@ -787,30 +798,6 @@ function createPeerConnection(){
 
         console.log(
             peerConnection.connectionState
-        );
-
-    };
-
-    /* =====================
-       ICE STATE
-    ===================== */
-
-    peerConnection.oniceconnectionstatechange =
-    () => {
-
-        if(!peerConnection){
-
-            return;
-
-        }
-
-        console.log(
-
-            "ICE:",
-
-            peerConnection
-            .iceConnectionState
-
         );
 
     };
@@ -846,19 +833,11 @@ function stopWebRTC(){
 
     }
 
-    if(studentVideo){
+    studentVideo.srcObject =
+    null;
 
-        studentVideo.srcObject =
-        null;
-
-    }
-
-    if(remoteAudio){
-
-        remoteAudio.srcObject =
-        null;
-
-    }
+    remoteAudio.srcObject =
+    null;
 
     pendingCandidates = [];
 
@@ -870,80 +849,138 @@ function stopWebRTC(){
 
 
 /* =========================
-   SPEECH RECOGNITION
+   WEB SPEECH API
 ========================= */
 
 if(
-    "webkitSpeechRecognition"
-    in window
+
+    "SpeechRecognition" in window ||
+
+    "webkitSpeechRecognition" in window
+
 ){
 
+    const SpeechRecognition =
+
+    window.SpeechRecognition ||
+
+    window.webkitSpeechRecognition;
+
     recognition =
-    new webkitSpeechRecognition();
+    new SpeechRecognition();
 
     recognition.continuous =
+    false;
+
+    recognition.interimResults =
     false;
 
     recognition.lang =
     "en-US";
 
-    recognition.interimResults =
-    false;
-
     recognition.maxAlternatives =
     1;
 
-    recognition.onresult =
-    (e) => {
+    recognition.onstart = () => {
 
-        const text =
-        e.results[0][0]
-        .transcript;
+        console.log(
+            "Recording Started"
+        );
+
+        createSystemMessage(
+            "Recording answer..."
+        );
+
+    };
+
+    recognition.onresult =
+    (event) => {
+
+        console.log(
+            "Speech Result:",
+            event
+        );
+
+        const transcript =
+
+        event.results[0][0]
+        .transcript
+        .trim();
 
         if(
-            mode ===
-            "answer"
+            !transcript
         ){
 
-            tempAnswer =
-            text;
+            return;
 
-            if(currentBubbleA){
+        }
 
-                currentBubbleA.remove();
+        tempAnswer =
+        transcript;
 
-            }
+        // REMOVE OLD
 
-            currentBubbleA =
-            createBubble(
+        if(currentBubbleA){
 
-                text,
+            currentBubbleA.remove();
 
-                "answer"
+        }
+
+        // SHOW NEW
+
+        currentBubbleA =
+        createBubble(
+
+            `You: ${transcript}`,
+
+            "answer"
+
+        );
+
+        // SEND TO SIR PAGE
+
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
+
+            socket.send(
+
+                JSON.stringify({
+
+                    type:"answer",
+
+                    text:transcript
+
+                })
 
             );
 
-            if(
-                socket &&
-                socket.readyState === 1
-            ){
-
-                socket.send(
-
-                    JSON.stringify({
-
-                        type:
-                        "answer",
-
-                        text:text
-
-                    })
-
-                );
-
-            }
-
         }
+
+    };
+
+    recognition.onerror =
+    (event) => {
+
+        console.log(
+            "Speech Error:",
+            event.error
+        );
+
+        errorBox.innerText =
+
+        "Mic Error: " +
+
+        event.error;
+
+    };
+
+    recognition.onend = () => {
+
+        console.log(
+            "Recording Stopped"
+        );
 
     };
 
@@ -955,8 +992,6 @@ if(
 ========================= */
 
 recordBtn.onclick = () => {
-
-    mode = "answer";
 
     errorBox.innerText =
     "";
@@ -972,7 +1007,7 @@ recordBtn.onclick = () => {
 
     try{
 
-        recognition.abort();
+        recognition.stop();
 
     }catch(e){}
 
@@ -980,7 +1015,7 @@ recordBtn.onclick = () => {
 
         recognition.start();
 
-    }, 150);
+    }, 200);
 
 };
 
@@ -1016,6 +1051,28 @@ storeBtn.onclick = () => {
 
         errorBox.innerText =
         "Question or answer missing";
+
+        return;
+
+    }
+
+    // PREVENT DUPLICATE
+
+    const exists =
+    qaList.some(q =>
+
+        q.question ===
+        tempQuestion &&
+
+        q.answer ===
+        tempAnswer
+
+    );
+
+    if(exists){
+
+        errorBox.innerText =
+        "Already stored";
 
         return;
 
@@ -1330,3 +1387,23 @@ function goBack(){
     "/dashboard";
 
 }
+
+
+/* =========================
+   CLEANUP
+========================= */
+
+window.addEventListener(
+    "beforeunload",
+    () => {
+
+        stopWebRTC();
+
+        if(socket){
+
+            socket.close();
+
+        }
+
+    }
+);
