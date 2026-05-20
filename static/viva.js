@@ -69,7 +69,7 @@ document.getElementById(
 
 const userData =
 localStorage.getItem(
-    "user"
+    "student_user"
 );
 
 if(!userData){
@@ -82,8 +82,6 @@ if(!userData){
 const user =
 JSON.parse(userData);
 
-// FIX REDIRECT BUG
-
 if(!user){
 
     window.location.href =
@@ -91,16 +89,14 @@ if(!user){
 
 }
 
-// ROOM FALLBACK
-
 if(!user.room_id){
 
-    user.room_id =
-    "room_1";
-
     console.log(
-        "Fallback room applied"
+        "Missing room id"
     );
+
+    window.location.href =
+    "/dashboard";
 
 }
 
@@ -125,6 +121,10 @@ let qaList = [];
 
 let socket = null;
 
+let reconnectTimeout = null;
+
+let reconnecting = false;
+
 
 /* =========================
    WEBRTC
@@ -142,10 +142,6 @@ let pendingCandidates = [];
 
 let remoteStreamAttached =
 false;
-
-let reconnecting = false;
-
-let reconnectTimeout = null;
 
 
 /* =========================
@@ -216,11 +212,18 @@ function connectSocket(){
 
     "ws";
 
+    const socketUrl =
+
+    `${protocol}://${window.location.host}/ws/viva/${user.room_id}`;
+
+    console.log(
+        "Connecting:",
+        socketUrl
+    );
+
     socket =
     new WebSocket(
-
-        `${protocol}://${window.location.host}/ws/viva/${user.room_id}`
-
+        socketUrl
     );
 
     socket.onopen = () => {
@@ -255,8 +258,6 @@ function connectSocket(){
         console.log(
             "Socket Closed"
         );
-
-        // AUTO RECONNECT
 
         if(!reconnecting){
 
@@ -350,36 +351,6 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR SPEAKING
-        ===================== */
-
-        if(
-            msg.type ===
-            "sir-speaking"
-        ){
-
-            createSystemMessage(
-                "Professor started talking"
-            );
-
-        }
-
-        /* =====================
-           SIR STOPPED
-        ===================== */
-
-        if(
-            msg.type ===
-            "sir-stopped-speaking"
-        ){
-
-            createSystemMessage(
-                "Professor stopped talking"
-            );
-
-        }
-
-        /* =====================
            WEBRTC OFFER
         ===================== */
 
@@ -412,7 +383,7 @@ function connectSocket(){
 
                 }
 
-                // APPLY PENDING ICE
+                // APPLY ICE
 
                 for(
                     const candidate
@@ -443,7 +414,7 @@ function connectSocket(){
 
                 pendingCandidates = [];
 
-                // CREATE ANSWER
+                // ANSWER
 
                 const answer =
                 await peerConnection
@@ -453,8 +424,6 @@ function connectSocket(){
                 .setLocalDescription(
                     answer
                 );
-
-                // SEND ANSWER
 
                 if(
                     socket &&
@@ -509,8 +478,7 @@ function connectSocket(){
 
                 if(
                     peerConnection &&
-                    peerConnection.remoteDescription &&
-                    peerConnection.remoteDescription.type
+                    peerConnection.remoteDescription
                 ){
 
                     await peerConnection
@@ -544,37 +512,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR MUTED
-        ===================== */
-
-        if(
-            msg.type ===
-            "sir-muted"
-        ){
-
-            createSystemMessage(
-                "Professor muted microphone"
-            );
-
-        }
-
-        /* =====================
-           SIR UNMUTED
-        ===================== */
-
-        if(
-            msg.type ===
-            "sir-unmuted"
-        ){
-
-            createSystemMessage(
-                "Professor unmuted microphone"
-            );
-
-        }
-
-        /* =====================
-           VOICE ENDED
+           SIR ENDED
         ===================== */
 
         if(
@@ -684,12 +622,7 @@ async function startStudentMedia(){
             studentVideo.muted =
             true;
 
-            studentVideo.style.objectFit =
-            "cover";
-
         }
-
-        // CREATE PEER
 
         createPeerConnection();
 
@@ -707,7 +640,7 @@ async function startStudentMedia(){
 
         });
 
-        // NOTIFY SIR
+        // NOTIFY
 
         if(
             socket &&
@@ -769,12 +702,7 @@ function createPeerConnection(){
             const remoteStream =
             event.streams[0];
 
-            console.log(
-                "TRACK:",
-                event.track.kind
-            );
-
-            // FIX DUPLICATE AUDIO
+            // PREVENT DUPLICATE
 
             if(
                 remoteAudio &&
@@ -785,9 +713,6 @@ function createPeerConnection(){
                 return;
 
             }
-
-            remoteStreamAttached =
-            true;
 
             if(remoteAudio){
 
@@ -891,17 +816,6 @@ function createPeerConnection(){
 
         if(
             peerConnection.connectionState ===
-            "disconnected"
-        ){
-
-            createSystemMessage(
-                "Trying to reconnect..."
-            );
-
-        }
-
-        if(
-            peerConnection.connectionState ===
             "failed"
         ){
 
@@ -944,9 +858,6 @@ function stopWebRTC(){
 
     }
 
-    remoteStreamAttached =
-    false;
-
     if(studentVideo){
 
         studentVideo.srcObject =
@@ -961,15 +872,11 @@ function stopWebRTC(){
 
     }
 
-    webrtcEnabled = false;
+    pendingCandidates = [];
 
     muted = false;
 
-    pendingCandidates = [];
-
-    console.log(
-        "WebRTC stopped"
-    );
+    webrtcEnabled = false;
 
 }
 
@@ -1054,72 +961,6 @@ if(
 
     };
 
-    recognition.onerror =
-    (e) => {
-
-        console.log(
-            "Speech Error",
-            e
-        );
-
-    };
-
-}
-
-
-/* =========================
-   CREATE BUBBLE
-========================= */
-
-function createBubble(text,type){
-
-    const div =
-    document.createElement(
-        "div"
-    );
-
-    div.className =
-    "bubble " + type;
-
-    div.innerText =
-    text;
-
-    chatBox.appendChild(
-        div
-    );
-
-    chatBox.scrollTop =
-    chatBox.scrollHeight;
-
-    return div;
-
-}
-
-
-/* =========================
-   SYSTEM MESSAGE
-========================= */
-
-function createSystemMessage(text){
-
-    const div =
-    document.createElement(
-        "div"
-    );
-
-    div.className =
-    "bubble system";
-
-    div.innerText =
-    text;
-
-    chatBox.appendChild(
-        div
-    );
-
-    chatBox.scrollTop =
-    chatBox.scrollHeight;
-
 }
 
 
@@ -1199,8 +1040,6 @@ document.getElementById(
         return;
 
     }
-
-    // PREVENT DUPLICATE
 
     const alreadyExists =
     qaList.some(q => {
@@ -1315,12 +1154,11 @@ document.getElementById(
     "";
 
     if(
-        !qaList ||
         qaList.length === 0
     ){
 
         errorBox.innerText =
-        "Please store at least one Q&A";
+        "Store at least one Q&A";
 
         return;
 
@@ -1377,7 +1215,7 @@ document.getElementById(
                 "evaluation",
 
                 JSON.stringify(
-                    data.result
+                    data.result || {}
                 )
 
             );
@@ -1385,19 +1223,6 @@ document.getElementById(
             stopWebRTC();
 
             if(socket){
-
-                socket.onclose = null;
-
-                socket.send(
-
-                    JSON.stringify({
-
-                        type:
-                        "student-left"
-
-                    })
-
-                );
 
                 socket.close();
 
@@ -1434,70 +1259,95 @@ document.getElementById(
 
 
 /* =========================
-   MUTE / UNMUTE
+   MUTE
 ========================= */
 
-if(muteBtn){
+muteBtn.onclick = () => {
 
-    muteBtn.onclick = () => {
+    if(!localStream){
 
-        if(!localStream){
+        return;
 
-            return;
+    }
 
-        }
+    muted = !muted;
 
-        muted = !muted;
+    localStream
+    .getAudioTracks()
+    .forEach(track => {
 
-        localStream
-        .getAudioTracks()
-        .forEach(track => {
+        track.enabled =
+        !muted;
 
-            track.enabled =
-            !muted;
+    });
 
-        });
+    muteBtn.innerText =
 
-        muteBtn.innerText =
+    muted
 
-        muted
+    ?
 
-        ?
+    "Unmute"
 
-        "Unmute"
+    :
 
-        :
+    "Mute";
 
-        "Mute";
+};
 
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
 
-            socket.send(
+/* =========================
+   CREATE BUBBLE
+========================= */
 
-                JSON.stringify({
+function createBubble(text,type){
 
-                    type:
+    const div =
+    document.createElement(
+        "div"
+    );
 
-                    muted
+    div.className =
+    "bubble " + type;
 
-                    ?
+    div.innerText =
+    text;
 
-                    "student-muted"
+    chatBox.appendChild(
+        div
+    );
 
-                    :
+    chatBox.scrollTop =
+    chatBox.scrollHeight;
 
-                    "student-unmuted"
+    return div;
 
-                })
+}
 
-            );
 
-        }
+/* =========================
+   SYSTEM MESSAGE
+========================= */
 
-    };
+function createSystemMessage(text){
+
+    const div =
+    document.createElement(
+        "div"
+    );
+
+    div.className =
+    "bubble system";
+
+    div.innerText =
+    text;
+
+    chatBox.appendChild(
+        div
+    );
+
+    chatBox.scrollTop =
+    chatBox.scrollHeight;
 
 }
 
@@ -1510,23 +1360,7 @@ function goBack(){
 
     stopWebRTC();
 
-    if(
-        socket &&
-        socket.readyState === 1
-    ){
-
-        socket.onclose = null;
-
-        socket.send(
-
-            JSON.stringify({
-
-                type:
-                "student-left"
-
-            })
-
-        );
+    if(socket){
 
         socket.close();
 

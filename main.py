@@ -382,12 +382,23 @@ async def sir_auth(request: Request):
 
     if sir:
 
+        sir_id = sir[0]
+
+        room_id = f"room_{sir_id}"
+
         return {
-            "success": True,
-            "sirid": sir[0],
-            "username": sir[1],
-            "message": "Access granted"
-        }
+
+        "success": True,
+
+        "sirid": sir_id,
+
+        "username": sir[1],
+
+        "room_id": room_id,
+
+        "message": "Access granted"
+
+    }
 
     return {
         "success": False,

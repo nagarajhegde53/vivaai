@@ -180,11 +180,10 @@ document.getElementById("loginBtn").onclick = async () => {
 
     loginError.innerText = "Login successful";
 
-    localStorage.setItem(
-      "user",
-      JSON.stringify(data)
-    );
-
+   localStorage.setItem(
+  "student_user",
+  JSON.stringify(data)
+);
     setTimeout(() => {
 
       window.location.href = "/dashboard";
@@ -243,10 +242,10 @@ document.getElementById("sirLoginBtn").onclick = async () => {
     sirError.innerText =
       "Access Granted";
 
-    localStorage.setItem(
-      "sir",
-      JSON.stringify(data)
-    );
+   localStorage.setItem(
+  "sir_user",
+  JSON.stringify(data)
+);
 
     setTimeout(() => {
 

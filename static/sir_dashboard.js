@@ -54,7 +54,7 @@ document.querySelector(
 
 const sirData =
 localStorage.getItem(
-    "user"
+    "sir_user"
 );
 
 if(!sirData){
@@ -67,25 +67,10 @@ if(!sirData){
 const sir =
 JSON.parse(sirData);
 
-// FIXED REDIRECT BUG
-
 if(!sir){
 
     window.location.href =
     "/";
-
-}
-
-// ROOM FALLBACK
-
-if(!sir.room_id){
-
-    sir.room_id =
-    "room_1";
-
-    console.log(
-        "Fallback room applied"
-    );
 
 }
 
@@ -106,9 +91,13 @@ let muted = false;
 
 let pendingCandidates = [];
 
-let reconnecting = false;
-
 let reconnectTimeout = null;
+
+let currentRoom = null;
+
+let selectedStudent = null;
+
+let isConnecting = false;
 
 
 /* =========================
@@ -136,12 +125,93 @@ const rtcConfig = {
 
 
 /* =========================
+   LOAD STUDENTS
+========================= */
+
+loadStudents();
+
+async function loadStudents(){
+
+    try{
+
+        const res =
+        await fetch(
+            "/api/students"
+        );
+
+        const data =
+        await res.json();
+
+        console.log(
+            "Students:",
+            data
+        );
+
+        if(
+            data.success &&
+            data.students.length > 0
+        ){
+
+            // AUTO SELECT FIRST STUDENT
+
+            selectedStudent =
+            data.students[0];
+
+            currentRoom =
+            selectedStudent.room_id;
+
+            console.log(
+                "Selected Room:",
+                currentRoom
+            );
+
+            connectSocket();
+
+        }
+
+        else{
+
+            createSystemMessage(
+                "No active students"
+            );
+
+        }
+
+    }catch(err){
+
+        console.log(
+            "Student Load Error",
+            err
+        );
+
+    }
+
+}
+
+
+/* =========================
    CONNECT SOCKET
 ========================= */
 
-connectSocket();
-
 function connectSocket(){
+
+    if(isConnecting){
+
+        return;
+
+    }
+
+    if(!currentRoom){
+
+        console.log(
+            "No room selected"
+        );
+
+        return;
+
+    }
+
+    isConnecting = true;
 
     const protocol =
 
@@ -156,11 +226,18 @@ function connectSocket(){
 
     "ws";
 
+    const socketUrl =
+
+    `${protocol}://${window.location.host}/ws/viva/${currentRoom}`;
+
+    console.log(
+        "Connecting:",
+        socketUrl
+    );
+
     socket =
     new WebSocket(
-
-        `${protocol}://${window.location.host}/ws/viva/${sir.room_id}`
-
+        socketUrl
     );
 
     socket.onopen = () => {
@@ -169,7 +246,7 @@ function connectSocket(){
             "Sir Connected"
         );
 
-        reconnecting = false;
+        isConnecting = false;
 
         if(reconnectTimeout){
 
@@ -190,6 +267,10 @@ function connectSocket(){
 
         }
 
+        createSystemMessage(
+            `Connected to ${currentRoom}`
+        );
+
     };
 
     socket.onerror = (err) => {
@@ -199,6 +280,8 @@ function connectSocket(){
             err
         );
 
+        isConnecting = false;
+
     };
 
     socket.onclose = () => {
@@ -206,6 +289,8 @@ function connectSocket(){
         console.log(
             "Socket Closed"
         );
+
+        isConnecting = false;
 
         if(socketStatus){
 
@@ -218,20 +303,12 @@ function connectSocket(){
 
         }
 
-        // AUTO RECONNECT
+        reconnectTimeout =
+        setTimeout(() => {
 
-        if(!reconnecting){
+            connectSocket();
 
-            reconnecting = true;
-
-            reconnectTimeout =
-            setTimeout(() => {
-
-                connectSocket();
-
-            }, 3000);
-
-        }
+        }, 3000);
 
     };
 
@@ -275,36 +352,6 @@ function connectSocket(){
 
             createSystemMessage(
                 "Student camera enabled"
-            );
-
-        }
-
-        /* =====================
-           STUDENT MUTED
-        ===================== */
-
-        if(
-            msg.type ===
-            "student-muted"
-        ){
-
-            createSystemMessage(
-                "Student muted microphone"
-            );
-
-        }
-
-        /* =====================
-           STUDENT UNMUTED
-        ===================== */
-
-        if(
-            msg.type ===
-            "student-unmuted"
-        ){
-
-            createSystemMessage(
-                "Student unmuted microphone"
             );
 
         }
@@ -416,8 +463,7 @@ function connectSocket(){
 
                 if(
                     peerConnection &&
-                    peerConnection.remoteDescription &&
-                    peerConnection.remoteDescription.type
+                    peerConnection.remoteDescription
                 ){
 
                     await peerConnection
@@ -532,17 +578,11 @@ async () => {
 
     try{
 
-        // CLEAN OLD SESSION
-
-        if(peerConnection){
+        if(
+            peerConnection
+        ){
 
             stopWebRTC();
-
-        }
-
-        if(webrtcStarted){
-
-            return;
 
         }
 
@@ -559,8 +599,6 @@ async () => {
 
         }
 
-        // NOTIFY STUDENT
-
         socket.send(
 
             JSON.stringify({
@@ -571,8 +609,6 @@ async () => {
             })
 
         );
-
-        // CAMERA + MIC
 
         localStream =
         await navigator
@@ -612,8 +648,6 @@ async () => {
 
         createPeerConnection();
 
-        // ADD TRACKS
-
         localStream
         .getTracks()
         .forEach(track => {
@@ -625,8 +659,6 @@ async () => {
             );
 
         });
-
-        // OFFER
 
         const offer =
         await peerConnection
@@ -643,28 +675,19 @@ async () => {
             offer
         );
 
-        // SEND OFFER
+        socket.send(
 
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
+            JSON.stringify({
 
-            socket.send(
+                type:
+                "webrtc-offer",
 
-                JSON.stringify({
+                offer:
+                peerConnection.localDescription
 
-                    type:
-                    "webrtc-offer",
+            })
 
-                    offer:
-                    peerConnection.localDescription
-
-                })
-
-            );
-
-        }
+        );
 
         createSystemMessage(
             "Voice chat started"
@@ -693,10 +716,6 @@ function createPeerConnection(){
         rtcConfig
     );
 
-    /* =====================
-       RECEIVE STREAM
-    ===================== */
-
     peerConnection.ontrack =
     async (event) => {
 
@@ -704,13 +723,6 @@ function createPeerConnection(){
 
             const remoteStream =
             event.streams[0];
-
-            console.log(
-                "TRACK:",
-                event.track.kind
-            );
-
-            // FIX FREEZE BUG
 
             if(
                 studentVideo &&
@@ -735,9 +747,6 @@ function createPeerConnection(){
 
                 studentVideo.muted =
                 false;
-
-                studentVideo.style.objectFit =
-                "cover";
 
                 try{
 
@@ -764,10 +773,6 @@ function createPeerConnection(){
         }
 
     };
-
-    /* =====================
-       ICE
-    ===================== */
 
     peerConnection.onicecandidate =
     (event) => {
@@ -796,10 +801,6 @@ function createPeerConnection(){
 
     };
 
-    /* =====================
-       CONNECTION STATE
-    ===================== */
-
     peerConnection.onconnectionstatechange =
     () => {
 
@@ -824,17 +825,6 @@ function createPeerConnection(){
 
             createSystemMessage(
                 "Voice connected"
-            );
-
-        }
-
-        if(
-            peerConnection.connectionState ===
-            "disconnected"
-        ){
-
-            createSystemMessage(
-                "Trying to reconnect..."
             );
 
         }
@@ -925,13 +915,9 @@ function stopWebRTC(){
 
     webrtcStarted = false;
 
-    if(chatBox){
-
-        createSystemMessage(
-            "Voice chat stopped"
-        );
-
-    }
+    createSystemMessage(
+        "Voice chat stopped"
+    );
 
 }
 
@@ -971,33 +957,6 @@ muteBtn.onclick = () => {
 
     "Mute";
 
-    if(
-        socket &&
-        socket.readyState === 1
-    ){
-
-        socket.send(
-
-            JSON.stringify({
-
-                type:
-
-                muted
-
-                ?
-
-                "sir-muted"
-
-                :
-
-                "sir-unmuted"
-
-            })
-
-        );
-
-    }
-
 };
 
 
@@ -1009,27 +968,15 @@ endBtn.onclick = () => {
 
     stopWebRTC();
 
-    if(
-        socket &&
-        socket.readyState === 1
-    ){
-
-        socket.onclose = null;
-
-        socket.send(
-
-            JSON.stringify({
-
-                type:
-                "sir-voice-ended"
-
-            })
-
-        );
+    if(socket){
 
         socket.close();
 
     }
+
+    localStorage.removeItem(
+        "sir_user"
+    );
 
     window.location.href =
     "/";
