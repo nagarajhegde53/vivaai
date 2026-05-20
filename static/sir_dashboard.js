@@ -52,12 +52,12 @@ document.querySelector(
    USER
 ========================= */
 
-// FIXED:
-// separate sir session
+// COMPATIBLE WITH
+// YOUR CURRENT LOGIN SYSTEM
 
 const sirData =
 localStorage.getItem(
-    "sir_user"
+    "user"
 );
 
 if(!sirData){
@@ -70,7 +70,14 @@ if(!sirData){
 const sir =
 JSON.parse(sirData);
 
-if(!sir.room_id){
+if(
+    !sir ||
+    !sir.room_id
+){
+
+    console.log(
+        "Invalid sir session"
+    );
 
     window.location.href =
     "/";
@@ -94,8 +101,7 @@ let muted = false;
 
 let pendingCandidates = [];
 
-let remoteStreamAttached =
-false;
+let reconnecting = false;
 
 
 /* =========================
@@ -156,6 +162,8 @@ function connectSocket(){
             "Sir Connected"
         );
 
+        reconnecting = false;
+
         if(socketStatus){
 
             socketStatus.innerHTML =
@@ -195,6 +203,20 @@ function connectSocket(){
 
         }
 
+        // AUTO RECONNECT
+
+        if(!reconnecting){
+
+            reconnecting = true;
+
+            setTimeout(() => {
+
+                connectSocket();
+
+            }, 3000);
+
+        }
+
     };
 
     socket.onmessage =
@@ -227,7 +249,7 @@ function connectSocket(){
         }
 
         /* =====================
-           STUDENT CAMERA ON
+           STUDENT CAMERA
         ===================== */
 
         if(
@@ -494,7 +516,24 @@ async () => {
 
     try{
 
+        if(
+            peerConnection
+        ){
+
+            stopWebRTC();
+
+        }
+
         if(webrtcStarted){
+
+            return;
+
+        }
+
+        if(
+            !socket ||
+            socket.readyState !== 1
+        ){
 
             return;
 
@@ -513,14 +552,29 @@ async () => {
 
         );
 
-        // MIC + CAMERA
+        // CAMERA + MIC
 
         localStream =
         await navigator
         .mediaDevices
         .getUserMedia({
 
-            video:true,
+            video:{
+
+                width:{
+                    ideal:640
+                },
+
+                height:{
+                    ideal:360
+                },
+
+                frameRate:{
+                    ideal:15,
+                    max:18
+                }
+
+            },
 
             audio:{
 
@@ -571,19 +625,26 @@ async () => {
 
         // SEND OFFER
 
-        socket.send(
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
 
-            JSON.stringify({
+            socket.send(
 
-                type:
-                "webrtc-offer",
+                JSON.stringify({
 
-                offer:
-                peerConnection.localDescription
+                    type:
+                    "webrtc-offer",
 
-            })
+                    offer:
+                    peerConnection.localDescription
 
-        );
+                })
+
+            );
+
+        }
 
         createSystemMessage(
             "Voice chat started"
@@ -632,15 +693,14 @@ function createPeerConnection(){
             // PREVENT DUPLICATE
 
             if(
-                remoteStreamAttached
+                studentVideo &&
+                studentVideo.srcObject ===
+                remoteStream
             ){
 
                 return;
 
             }
-
-            remoteStreamAttached =
-            true;
 
             if(studentVideo){
 
@@ -652,6 +712,9 @@ function createPeerConnection(){
 
                 studentVideo.playsInline =
                 true;
+
+                studentVideo.muted =
+                false;
 
                 studentVideo.style.objectFit =
                 "cover";
@@ -836,18 +899,19 @@ function stopWebRTC(){
 
     }
 
-    remoteStreamAttached =
-    false;
-
     pendingCandidates = [];
 
     muted = false;
 
     webrtcStarted = false;
 
-    createSystemMessage(
-        "Voice chat stopped"
-    );
+    if(chatBox){
+
+        createSystemMessage(
+            "Voice chat stopped"
+        );
+
+    }
 
 }
 

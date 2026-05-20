@@ -67,13 +67,11 @@ document.getElementById(
    USER
 ========================= */
 
-// FIXED:
-// separate storage key
-// prevents sir dashboard logout
+// COMPATIBLE WITH OLD LOGIN SYSTEM
 
 const userData =
 localStorage.getItem(
-    "student_user"
+    "user"
 );
 
 if(!userData){
@@ -356,8 +354,6 @@ function connectSocket(){
 
                 }
 
-                // PREVENT DUPLICATE OFFER
-
                 if(
                     peerConnection &&
                     !peerConnection.remoteDescription
@@ -617,7 +613,7 @@ async function startStudentMedia(){
 
         webrtcEnabled = true;
 
-        // LOCAL PREVIEW
+        // LOCAL VIDEO
 
         if(studentVideo){
 
@@ -1144,6 +1140,8 @@ document.getElementById(
         return;
 
     }
+
+    // PREVENT DUPLICATE
 
     const alreadyExists =
     qaList.some(q => {
