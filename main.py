@@ -177,8 +177,13 @@ conn.commit()
 conn.close()
 
 # ---------- GROQ ----------
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+from groq import Groq
 
+client = Groq(
+    api_key=os.getenv(
+        "GROQ_API_KEY"
+    )
+)
 # ---------- ROUTES ----------
 @app.get("/", response_class=HTMLResponse)
 def home():

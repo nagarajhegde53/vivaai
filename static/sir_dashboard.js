@@ -1,12 +1,114 @@
 /* =========================
+   ELEMENTS
+========================= */
+
+const startBtn =
+document.getElementById(
+    "startBtn"
+);
+
+const startScreen =
+document.getElementById(
+    "startScreen"
+);
+
+const main =
+document.getElementById(
+    "main"
+);
+
+const controls =
+document.querySelector(
+    ".controls"
+);
+
+const chatBox =
+document.getElementById(
+    "chatBox"
+);
+
+const storedBox =
+document.getElementById(
+    "storedBox"
+);
+
+const errorBox =
+document.getElementById(
+    "errorBox"
+);
+
+const muteBtn =
+document.getElementById(
+    "muteBtn"
+);
+
+const voicePopup =
+document.getElementById(
+    "voicePopup"
+);
+
+const enableVoiceBtn =
+document.getElementById(
+    "enableVoiceBtn"
+);
+
+const remoteAudio =
+document.getElementById(
+    "remoteAudio"
+);
+
+const studentVideo =
+document.getElementById(
+    "studentVideo"
+);
+
+
+/* =========================
+   USER
+========================= */
+
+const userData =
+localStorage.getItem(
+    "user"
+);
+
+if(!userData){
+
+    window.location.href =
+    "/";
+
+}
+
+const user =
+JSON.parse(userData);
+
+if(!user.room_id){
+
+    window.location.href =
+    "/dashboard";
+
+}
+
+
+/* =========================
    GLOBALS
 ========================= */
 
-let socket = null;
-
-let activeRoom = null;
-
 let recognition = null;
+
+let mode = null;
+
+let tempQuestion = "";
+
+let tempAnswer = "";
+
+let currentBubbleQ = null;
+
+let currentBubbleA = null;
+
+let qaList = [];
+
+let socket = null;
 
 
 /* =========================
@@ -20,8 +122,6 @@ let peerConnection = null;
 let webrtcEnabled = false;
 
 let muted = false;
-
-let sirTalking = false;
 
 let pendingCandidates = [];
 
@@ -45,512 +145,266 @@ const rtcConfig = {
 
 
 /* =========================
-   LOGOUT
+   START VIVA
 ========================= */
 
-const logoutBtn =
-document.getElementById(
-    "logoutBtn"
-);
+startBtn.onclick = () => {
 
-if(logoutBtn){
+    startScreen.style.display =
+    "none";
 
-    logoutBtn.onclick = () => {
+    main.style.display =
+    "flex";
 
-        stopWebRTC();
+    setTimeout(() => {
 
-        if(socket){
-
-            socket.close();
-
-        }
-
-        localStorage.removeItem(
-            "sir"
+        controls.classList.add(
+            "show"
         );
 
-        localStorage.removeItem(
-            "user"
-        );
+    }, 100);
 
-        window.location.href = "/";
+    connectSocket();
+
+};
+
+
+/* =========================
+   CONNECT SOCKET
+========================= */
+
+function connectSocket(){
+
+    const protocol =
+
+    window.location.protocol ===
+    "https:"
+
+    ?
+
+    "wss"
+
+    :
+
+    "ws";
+
+    socket =
+    new WebSocket(
+
+        `${protocol}://${window.location.host}/ws/viva/${user.room_id}`
+
+    );
+
+    socket.onopen = () => {
+
+        console.log(
+            "Student Connected"
+        );
 
     };
 
-}
+    socket.onerror = (err) => {
 
-
-/* =========================
-   STUDENT LIST
-========================= */
-
-const studentList =
-document.querySelector(
-    ".student-list"
-);
-
-
-/* =========================
-   FETCH STUDENTS
-========================= */
-
-async function fetchStudents(){
-
-    try{
-
-        const res =
-        await fetch(
-            "/api/students"
+        console.log(
+            "Socket Error",
+            err
         );
 
-        const data =
-        await res.json();
+    };
 
-        if(data.success){
+    socket.onclose = () => {
 
-            renderStudents(
-                data.students
+        console.log(
+            "Socket Closed"
+        );
+
+    };
+
+    socket.onmessage =
+    async (event) => {
+
+        const msg =
+        JSON.parse(
+            event.data
+        );
+
+        console.log(msg);
+
+        /* =====================
+           QUESTION
+        ===================== */
+
+        if(
+            msg.type ===
+            "question"
+        ){
+
+            tempQuestion =
+            msg.text;
+
+            if(currentBubbleQ){
+
+                currentBubbleQ.remove();
+
+            }
+
+            currentBubbleQ =
+            createBubble(
+
+                `Sir: ${msg.text}`,
+
+                "question"
+
             );
 
         }
 
-    }catch(err){
+        /* =====================
+           CHAT
+        ===================== */
 
-        console.log(
-            "Student fetch error",
-            err
-        );
+        if(
+            msg.type ===
+            "chat"
+        ){
 
-    }
+            createBubble(
 
-}
+                msg.text,
 
+                "question"
 
-/* =========================
-   RENDER STUDENTS
-========================= */
-
-function renderStudents(students){
-
-    if(!studentList) return;
-
-    studentList.innerHTML = "";
-
-    students.forEach(student => {
-
-        const card =
-        document.createElement(
-            "div"
-        );
-
-        card.className =
-        `student-card ${student.status}`;
-
-        card.innerHTML = `
-
-            <div class="student-info">
-
-                <h3>
-                    ${student.username}
-                </h3>
-
-                <p>
-                    ${student.status}
-                </p>
-
-            </div>
-
-            <button
-            class="join-btn"
-            onclick="joinViva(${student.id})">
-
-                Join
-
-            </button>
-
-        `;
-
-        studentList.appendChild(
-            card
-        );
-
-    });
-
-}
-
-
-/* =========================
-   JOIN VIVA
-========================= */
-
-async function joinViva(studentId){
-
-    try{
-
-        const res =
-        await fetch(
-            "/api/start-viva",
-            {
-                method:"POST",
-
-                headers:{
-                    "Content-Type":
-                    "application/json"
-                },
-
-                body:JSON.stringify({
-
-                    student_id:
-                    studentId
-
-                })
-
-            }
-        );
-
-        const data =
-        await res.json();
-
-        if(data.success){
-
-            activeRoom =
-            data.room_id;
-
-            localStorage.setItem(
-                "activeRoom",
-                activeRoom
             );
 
-            // CLEAN OLD CONNECTIONS
+        }
 
-            stopWebRTC();
+        /* =====================
+           MIC POPUP
+        ===================== */
 
-            if(socket){
+        if(
+            msg.type ===
+            "sir-mic-on"
+        ){
 
-                socket.close();
+            voicePopup.style.display =
+            "flex";
+
+        }
+
+        /* =====================
+           PROFESSOR TALKING
+        ===================== */
+
+        if(
+            msg.type ===
+            "sir-speaking"
+        ){
+
+            createSystemMessage(
+                "Professor started talking"
+            );
+
+        }
+
+        /* =====================
+           PROFESSOR STOPPED
+        ===================== */
+
+        if(
+            msg.type ===
+            "sir-stopped-speaking"
+        ){
+
+            createSystemMessage(
+                "Professor stopped talking"
+            );
+
+        }
+
+        /* =====================
+           WEBRTC OFFER
+        ===================== */
+
+        if(
+            msg.type ===
+            "webrtc-offer"
+        ){
+
+            if(!webrtcEnabled){
+
+                await startStudentMedia();
+
+            }
+
+            // PREVENT DUPLICATE OFFER
+
+            if(
+                peerConnection &&
+                !peerConnection.remoteDescription
+            ){
+
+                await peerConnection
+                .setRemoteDescription(
+
+                    new RTCSessionDescription(
+                        msg.offer
+                    )
+
+                );
+
+            }
+
+            // APPLY PENDING ICE
+
+            for(
+                const candidate
+                of pendingCandidates
+            ){
+
+                try{
+
+                    await peerConnection
+                    .addIceCandidate(
+
+                        new RTCIceCandidate(
+                            candidate
+                        )
+
+                    );
+
+                }catch(err){
+
+                    console.log(
+                        "Pending ICE Error",
+                        err
+                    );
+
+                }
 
             }
 
             pendingCandidates = [];
 
-            // DYNAMIC WS / WSS
+            // CREATE ANSWER
 
-            const protocol =
+            const answer =
+            await peerConnection
+            .createAnswer();
 
-            window.location.protocol ===
-            "https:"
-
-            ?
-
-            "wss"
-
-            :
-
-            "ws";
-
-            // CONNECT SOCKET
-
-            socket =
-            new WebSocket(
-
-                `${protocol}://${window.location.host}/ws/viva/${activeRoom}`
-
+            await peerConnection
+            .setLocalDescription(
+                answer
             );
-
-            socket.onopen = () => {
-
-                console.log(
-                    "Sir Connected"
-                );
-
-            };
-
-            socket.onerror = (err) => {
-
-                console.log(
-                    "Socket Error",
-                    err
-                );
-
-            };
-
-            socket.onclose = () => {
-
-                console.log(
-                    "Socket Closed"
-                );
-
-            };
-
-            socket.onmessage =
-            async (event) => {
-
-                const msg =
-                JSON.parse(
-                    event.data
-                );
-
-                console.log(msg);
-
-                /* =====================
-                   STUDENT ANSWER
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "answer"
-                ){
-
-                    addTranscript(
-                        msg.text
-                    );
-
-                }
-
-                /* =====================
-                   CHAT
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "chat"
-                ){
-
-                    addChat(
-                        msg.text
-                    );
-
-                }
-
-                /* =====================
-                   WEBRTC ANSWER
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "webrtc-answer"
-                ){
-
-                    if(peerConnection){
-
-                        await peerConnection
-                        .setRemoteDescription(
-
-                            new RTCSessionDescription(
-                                msg.answer
-                            )
-
-                        );
-
-                        // APPLY ICE
-
-                        for(
-                            const candidate
-                            of pendingCandidates
-                        ){
-
-                            await peerConnection
-                            .addIceCandidate(
-
-                                new RTCIceCandidate(
-                                    candidate
-                                )
-
-                            );
-
-                        }
-
-                        pendingCandidates = [];
-
-                    }
-
-                }
-
-                /* =====================
-                   ICE CANDIDATE
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "ice-candidate"
-                ){
-
-                    try{
-
-                        if(
-                            peerConnection &&
-                            peerConnection
-                            .remoteDescription
-                        ){
-
-                            await peerConnection
-                            .addIceCandidate(
-
-                                new RTCIceCandidate(
-                                    msg.candidate
-                                )
-
-                            );
-
-                        }
-
-                        else{
-
-                            pendingCandidates.push(
-                                msg.candidate
-                            );
-
-                        }
-
-                    }catch(err){
-
-                        console.log(
-                            "ICE Error",
-                            err
-                        );
-
-                    }
-
-                }
-
-                /* =====================
-                   STUDENT MUTED
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "student-muted"
-                ){
-
-                    addSystemMessage(
-                        "Student muted microphone"
-                    );
-
-                }
-
-                /* =====================
-                   STUDENT UNMUTED
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "student-unmuted"
-                ){
-
-                    addSystemMessage(
-                        "Student unmuted microphone"
-                    );
-
-                }
-
-                /* =====================
-                   STUDENT LEFT
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "student-left"
-                ){
-
-                    addSystemMessage(
-                        "Student left voice chat"
-                    );
-
-                }
-
-                /* =====================
-                   STUDENT CAMERA ON
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "student-camera-on"
-                ){
-
-                    addSystemMessage(
-                        "Student camera enabled"
-                    );
-
-                }
-
-                /* =====================
-                   STUDENT CAMERA OFF
-                ===================== */
-
-                if(
-                    msg.type ===
-                    "student-camera-off"
-                ){
-
-                    addSystemMessage(
-                        "Student camera disabled"
-                    );
-
-                }
-
-            };
-
-            alert(
-                "Connected To Viva"
-            );
-
-        }
-
-    }catch(err){
-
-        console.log(
-            "Join viva error",
-            err
-        );
-
-    }
-
-}
-
-
-/* =========================
-   WEB SPEECH
-========================= */
-
-if(
-    'webkitSpeechRecognition'
-    in window
-){
-
-    recognition =
-    new webkitSpeechRecognition();
-
-    recognition.continuous =
-    false;
-
-    recognition.lang =
-    "en-US";
-
-    recognition.onresult =
-    (e) => {
-
-        const text =
-        e.results[0][0]
-        .transcript;
-
-        addSirQuestion(
-            text
-        );
-
-        // SEND QUESTION
-
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
 
             socket.send(
 
                 JSON.stringify({
 
-                    type:"question",
+                    type:
+                    "webrtc-answer",
 
-                    text:text
+                    answer:answer
 
                 })
 
@@ -558,42 +412,107 @@ if(
 
         }
 
-    };
+        /* =====================
+           ICE
+        ===================== */
 
-}
+        if(
+            msg.type ===
+            "ice-candidate"
+        ){
 
+            try{
 
-/* =========================
-   QUESTION BUTTON
-========================= */
+                if(
+                    !msg.candidate
+                ){
 
-const voiceQuestionBtn =
-document.getElementById(
-    "voiceQuestionBtn"
-);
+                    return;
 
-if(voiceQuestionBtn){
+                }
 
-    voiceQuestionBtn.onclick =
-    () => {
+                if(
+                    peerConnection &&
+                    peerConnection.remoteDescription &&
+                    peerConnection.remoteDescription.type
+                ){
 
-        if(!recognition){
+                    await peerConnection
+                    .addIceCandidate(
 
-            return;
+                        new RTCIceCandidate(
+                            msg.candidate
+                        )
+
+                    );
+
+                }
+
+                else{
+
+                    pendingCandidates.push(
+                        msg.candidate
+                    );
+
+                }
+
+            }catch(err){
+
+                console.log(
+                    "ICE Error",
+                    err
+                );
+
+            }
 
         }
 
-        if(!socket){
+        /* =====================
+           SIR MUTED
+        ===================== */
 
-            alert(
-                "Join student first"
+        if(
+            msg.type ===
+            "sir-muted"
+        ){
+
+            createSystemMessage(
+                "Professor muted microphone"
             );
 
-            return;
+        }
+
+        /* =====================
+           SIR UNMUTED
+        ===================== */
+
+        if(
+            msg.type ===
+            "sir-unmuted"
+        ){
+
+            createSystemMessage(
+                "Professor unmuted microphone"
+            );
 
         }
 
-        recognition.start();
+        /* =====================
+           VOICE ENDED
+        ===================== */
+
+        if(
+            msg.type ===
+            "sir-voice-ended"
+        ){
+
+            stopWebRTC();
+
+            createSystemMessage(
+                "Professor ended voice chat"
+            );
+
+        }
 
     };
 
@@ -601,157 +520,29 @@ if(voiceQuestionBtn){
 
 
 /* =========================
-   ADD QUESTION
+   ENABLE VOICE
 ========================= */
 
-function addSirQuestion(text){
+enableVoiceBtn.onclick =
+async () => {
 
-    const box =
-    document.querySelector(
-        ".transcript-box"
-    );
+    voicePopup.style.display =
+    "none";
 
-    if(!box) return;
+    await startStudentMedia();
 
-    const div =
-    document.createElement(
-        "div"
-    );
-
-    div.className =
-    "message ai-msg";
-
-    div.innerHTML = `
-
-        <strong>Sir:</strong>
-
-        ${text}
-
-    `;
-
-    box.appendChild(div);
-
-    box.scrollTop =
-    box.scrollHeight;
-
-}
+};
 
 
 /* =========================
-   ADD ANSWER
+   START MEDIA
 ========================= */
 
-function addTranscript(text){
-
-    const box =
-    document.querySelector(
-        ".transcript-box"
-    );
-
-    if(!box) return;
-
-    const div =
-    document.createElement(
-        "div"
-    );
-
-    div.className =
-    "message student-msg";
-
-    div.innerHTML = `
-
-        <strong>Student:</strong>
-
-        ${text}
-
-    `;
-
-    box.appendChild(div);
-
-    box.scrollTop =
-    box.scrollHeight;
-
-}
-
-
-/* =========================
-   CHAT
-========================= */
-
-function addChat(text){
-
-    const box =
-    document.querySelector(
-        ".chat-box"
-    );
-
-    if(!box) return;
-
-    const div =
-    document.createElement(
-        "div"
-    );
-
-    div.className =
-    "chat-msg";
-
-    div.innerText =
-    text;
-
-    box.appendChild(div);
-
-    box.scrollTop =
-    box.scrollHeight;
-
-}
-
-
-/* =========================
-   SYSTEM MESSAGE
-========================= */
-
-function addSystemMessage(text){
-
-    const box =
-    document.querySelector(
-        ".transcript-box"
-    );
-
-    if(!box) return;
-
-    const div =
-    document.createElement(
-        "div"
-    );
-
-    div.className =
-    "message system-msg";
-
-    div.innerHTML = `
-
-        <strong>System:</strong>
-
-        ${text}
-
-    `;
-
-    box.appendChild(div);
-
-    box.scrollTop =
-    box.scrollHeight;
-
-}
-
-
-/* =========================
-   START VOICE CHAT
-========================= */
-
-async function startVoiceChat(){
+async function startStudentMedia(){
 
     try{
 
-        // CLEAN OLD STREAMS
+        // CLEAN OLD
 
         if(peerConnection){
 
@@ -775,14 +566,31 @@ async function startVoiceChat(){
 
         }
 
-        // IMPORTANT:
-        // video:true required
-        // for receiving student camera
+        // CAMERA + MIC
 
         localStream =
         await navigator
         .mediaDevices
         .getUserMedia({
+
+            video:{
+
+                facingMode:"user",
+
+                width:{
+                    ideal:480
+                },
+
+                height:{
+                    ideal:270
+                },
+
+                frameRate:{
+                    ideal:12,
+                    max:15
+                }
+
+            },
 
             audio:{
 
@@ -798,33 +606,22 @@ async function startVoiceChat(){
 
                 sampleSize:16
 
-            },
-
-            video:true
-
-        });
-
-        // DISABLE SIR CAMERA
-
-        localStream
-        .getVideoTracks()
-        .forEach(track => {
-
-            track.enabled = false;
-
-        });
-
-        // START MIC OFF
-
-        localStream
-        .getAudioTracks()
-        .forEach(track => {
-
-            track.enabled = false;
+            }
 
         });
 
         webrtcEnabled = true;
+
+        // HIDDEN VIDEO
+
+        if(studentVideo){
+
+            studentVideo.srcObject =
+            localStream;
+
+        }
+
+        // CREATE PEER
 
         createPeerConnection();
 
@@ -842,59 +639,39 @@ async function startVoiceChat(){
 
         });
 
-        // CREATE OFFER
+        // NOTIFY SIR
 
-        const offer =
-        await peerConnection
-        .createOffer({
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
 
-            offerToReceiveAudio:true,
+            socket.send(
 
-            offerToReceiveVideo:true
+                JSON.stringify({
 
-        });
+                    type:
+                    "student-camera-on"
 
-        await peerConnection
-        .setLocalDescription(
-            offer
-        );
+                })
 
-        // SEND OFFER
+            );
 
-        socket.send(
-
-            JSON.stringify({
-
-                type:"webrtc-offer",
-
-                offer:offer
-
-            })
-
-        );
-
-        // NOTIFY STUDENT
-
-        socket.send(
-
-            JSON.stringify({
-
-                type:"sir-mic-on"
-
-            })
-
-        );
+        }
 
         console.log(
-            "Voice Connected"
+            "Media Started"
         );
 
     }catch(err){
 
         console.log(
-            "Voice Error",
+            "Media Error",
             err
         );
+
+        errorBox.innerText =
+        "Camera or microphone permission denied";
 
     }
 
@@ -902,7 +679,7 @@ async function startVoiceChat(){
 
 
 /* =========================
-   CREATE PEER CONNECTION
+   CREATE PEER
 ========================= */
 
 function createPeerConnection(){
@@ -912,81 +689,78 @@ function createPeerConnection(){
         rtcConfig
     );
 
-    // RECEIVE AUDIO + VIDEO
+    /* =====================
+       RECEIVE AUDIO
+    ===================== */
 
     peerConnection.ontrack =
-    (event) => {
+    async (event) => {
 
-        const remoteStream =
-        event.streams[0];
+        try{
 
-        console.log(
-            "TRACK:",
-            event.track.kind
-        );
+            const remoteStream =
+            event.streams[0];
 
-        /* =====================
-           AUDIO
-        ===================== */
-
-        if(
-            event.track.kind ===
-            "audio"
-        ){
-
-            const remoteAudio =
-            document.getElementById(
-                "remoteAudio"
+            console.log(
+                "TRACK:",
+                event.track.kind
             );
 
-            if(remoteAudio){
+            if(!remoteAudio){
 
-                remoteAudio.srcObject =
-                remoteStream;
-
-                remoteAudio.volume =
-                0.2;
-
-                remoteAudio.play();
+                return;
 
             }
 
-        }
+            // PREVENT DUPLICATE
 
-        /* =====================
-           VIDEO
-        ===================== */
+            if(
+                remoteAudio.srcObject ===
+                remoteStream
+            ){
 
-        if(
-            event.track.kind ===
-            "video"
-        ){
-
-            const studentVideo =
-            document.getElementById(
-                "studentLiveVideo"
-            );
-
-            if(studentVideo){
-
-                studentVideo.srcObject =
-                remoteStream;
-
-                studentVideo.autoplay =
-                true;
-
-                studentVideo.playsInline =
-                true;
-
-                studentVideo.play();
+                return;
 
             }
+
+            // ATTACH STREAM
+
+            remoteAudio.srcObject =
+            remoteStream;
+
+            remoteAudio.autoplay =
+            true;
+
+            remoteAudio.volume =
+            0.25;
+
+            try{
+
+                await remoteAudio.play();
+
+            }catch(playErr){
+
+                console.log(
+                    "Audio autoplay blocked",
+                    playErr
+                );
+
+            }
+
+        }catch(err){
+
+            console.log(
+                "Track Error",
+                err
+            );
 
         }
 
     };
 
-    // ICE
+    /* =====================
+       ICE
+    ===================== */
 
     peerConnection.onicecandidate =
     (event) => {
@@ -1001,7 +775,8 @@ function createPeerConnection(){
 
                 JSON.stringify({
 
-                    type:"ice-candidate",
+                    type:
+                    "ice-candidate",
 
                     candidate:
                     event.candidate
@@ -1014,264 +789,65 @@ function createPeerConnection(){
 
     };
 
-}
+    /* =====================
+       CONNECTION STATE
+    ===================== */
 
+    peerConnection.onconnectionstatechange =
+    () => {
 
-/* =========================
-   CONNECT VOICE BUTTON
-========================= */
-
-const voiceChatBtn =
-document.getElementById(
-    "voiceChatBtn"
-);
-
-if(voiceChatBtn){
-
-    voiceChatBtn.onclick =
-    async () => {
-
-        if(!socket){
-
-            alert(
-                "Join student first"
-            );
+        if(!peerConnection){
 
             return;
 
         }
 
-        if(
-            socket.readyState !== 1
-        ){
+        console.log(
 
-            alert(
-                "Socket not connected"
-            );
+            "Connection State:",
 
-            return;
+            peerConnection.connectionState
 
-        }
-
-        if(webrtcEnabled){
-
-            return;
-
-        }
-
-        await startVoiceChat();
-
-    };
-
-}
-
-
-/* =========================
-   TALK BUTTON
-========================= */
-
-const toggleVoiceBtn =
-document.getElementById(
-    "toggleVoiceBtn"
-);
-
-if(toggleVoiceBtn){
-
-    toggleVoiceBtn.onclick =
-    async () => {
-
-        if(!webrtcEnabled){
-
-            await startVoiceChat();
-
-        }
-
-        if(!localStream){
-
-            return;
-
-        }
-
-        sirTalking =
-        !sirTalking;
-
-        // ENABLE / DISABLE MIC
-
-        localStream
-        .getAudioTracks()
-        .forEach(track => {
-
-            track.enabled =
-            sirTalking;
-
-        });
-
-        // BUTTON UI
-
-        toggleVoiceBtn.innerHTML =
-
-        sirTalking
-
-        ?
-
-        `<i class="fa-solid fa-volume-xmark"></i>
-        Stop Talking`
-
-        :
-
-        `<i class="fa-solid fa-microphone"></i>
-        Start Talking`;
-
-        // SEND STATUS
-
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
-
-            socket.send(
-
-                JSON.stringify({
-
-                    type:
-
-                    sirTalking
-
-                    ?
-
-                    "sir-speaking"
-
-                    :
-
-                    "sir-stopped-speaking"
-
-                })
-
-            );
-
-        }
-
-    };
-
-}
-
-
-/* =========================
-   MUTE / UNMUTE
-========================= */
-
-const muteBtn =
-document.getElementById(
-    "muteBtn"
-);
-
-if(muteBtn){
-
-    muteBtn.onclick = () => {
-
-        if(!localStream){
-
-            return;
-
-        }
-
-        muted = !muted;
-
-        localStream
-        .getAudioTracks()
-        .forEach(track => {
-
-            track.enabled =
-            !muted;
-
-        });
-
-        muteBtn.innerHTML =
-
-        muted
-
-        ?
-
-        `<i class="fa-solid fa-microphone"></i>
-        Unmute`
-
-        :
-
-        `<i class="fa-solid fa-microphone-slash"></i>
-        Mute`;
-
-        // SEND STATUS
-
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
-
-            socket.send(
-
-                JSON.stringify({
-
-                    type:
-
-                    muted
-
-                    ?
-
-                    "sir-muted"
-
-                    :
-
-                    "sir-unmuted"
-
-                })
-
-            );
-
-        }
-
-    };
-
-}
-
-
-/* =========================
-   END VOICE
-========================= */
-
-const endVoiceBtn =
-document.getElementById(
-    "endVoiceBtn"
-);
-
-if(endVoiceBtn){
-
-    endVoiceBtn.onclick = () => {
-
-        stopWebRTC();
-
-        // NOTIFY STUDENT
-
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
-
-            socket.send(
-
-                JSON.stringify({
-
-                    type:
-                    "sir-voice-ended"
-
-                })
-
-            );
-
-        }
-
-        alert(
-            "Voice chat ended"
         );
+
+        // FAILED
+
+        if(
+            peerConnection.connectionState ===
+            "failed"
+        ){
+
+            createSystemMessage(
+                "Connection unstable"
+            );
+
+        }
+
+        // DISCONNECTED
+
+        if(
+            peerConnection.connectionState ===
+            "disconnected"
+        ){
+
+            createSystemMessage(
+                "Trying to reconnect..."
+            );
+
+        }
+
+        // CONNECTED
+
+        if(
+            peerConnection.connectionState ===
+            "connected"
+        ){
+
+            createSystemMessage(
+                "Voice connected"
+            );
+
+        }
 
     };
 
@@ -1312,11 +888,6 @@ function stopWebRTC(){
 
     // RESET VIDEO
 
-    const studentVideo =
-    document.getElementById(
-        "studentLiveVideo"
-    );
-
     if(studentVideo){
 
         studentVideo.srcObject =
@@ -1326,11 +897,6 @@ function stopWebRTC(){
 
     // RESET AUDIO
 
-    const remoteAudio =
-    document.getElementById(
-        "remoteAudio"
-    );
-
     if(remoteAudio){
 
         remoteAudio.srcObject =
@@ -1338,29 +904,11 @@ function stopWebRTC(){
 
     }
 
-    // RESET FLAGS
-
     webrtcEnabled = false;
 
     muted = false;
 
-    sirTalking = false;
-
     pendingCandidates = [];
-
-    // RESET BUTTON
-
-    if(toggleVoiceBtn){
-
-        toggleVoiceBtn.innerHTML = `
-
-            <i class="fa-solid fa-microphone"></i>
-
-            Start Talking
-
-        `;
-
-    }
 
     console.log(
         "WebRTC stopped"
@@ -1370,18 +918,569 @@ function stopWebRTC(){
 
 
 /* =========================
-   INITIAL LOAD
+   SPEECH RECOGNITION
 ========================= */
 
-fetchStudents();
+if(
+    'webkitSpeechRecognition'
+    in window
+){
+
+    recognition =
+    new webkitSpeechRecognition();
+
+    recognition.continuous =
+    false;
+
+    recognition.lang =
+    "en-US";
+
+    recognition.interimResults =
+    false;
+
+    recognition.maxAlternatives =
+    1;
+
+    recognition.onresult =
+    (e) => {
+
+        const text =
+        e.results[0][0]
+        .transcript;
+
+        /* =====================
+           ANSWER
+        ===================== */
+
+        if(
+            mode ===
+            "answer"
+        ){
+
+            tempAnswer =
+            text;
+
+            // REMOVE OLD
+
+            if(currentBubbleA){
+
+                currentBubbleA.remove();
+
+            }
+
+            currentBubbleA =
+            createBubble(
+
+                text,
+
+                "answer"
+
+            );
+
+            // SEND ANSWER
+
+            if(
+                socket &&
+                socket.readyState === 1
+            ){
+
+                socket.send(
+
+                    JSON.stringify({
+
+                        type:
+                        "answer",
+
+                        text:text
+
+                    })
+
+                );
+
+            }
+
+        }
+
+    };
+
+    recognition.onerror =
+    (e) => {
+
+        console.log(
+            "Speech Error",
+            e
+        );
+
+    };
+
+}
 
 
 /* =========================
-   AUTO REFRESH
+   CREATE BUBBLE
 ========================= */
 
-setInterval(() => {
+function createBubble(text,type){
 
-    fetchStudents();
+    const div =
+    document.createElement(
+        "div"
+    );
 
-}, 2000);
+    div.className =
+    "bubble " + type;
+
+    div.innerText =
+    text;
+
+    chatBox.appendChild(
+        div
+    );
+
+    chatBox.scrollTop =
+    chatBox.scrollHeight;
+
+    return div;
+
+}
+
+
+/* =========================
+   SYSTEM MESSAGE
+========================= */
+
+function createSystemMessage(text){
+
+    const div =
+    document.createElement(
+        "div"
+    );
+
+    div.className =
+    "bubble system";
+
+    div.innerText =
+    text;
+
+    chatBox.appendChild(
+        div
+    );
+
+    chatBox.scrollTop =
+    chatBox.scrollHeight;
+
+}
+
+
+/* =========================
+   RECORD ANSWER
+========================= */
+
+document.getElementById(
+    "recordA"
+).onclick = () => {
+
+    errorBox.innerText =
+    "";
+
+    mode = "answer";
+
+    if(!recognition){
+
+        errorBox.innerText =
+        "Speech recognition unsupported";
+
+        return;
+
+    }
+
+    // FIX DOUBLE START
+
+    try{
+
+        recognition.stop();
+
+    }catch(e){}
+
+    setTimeout(() => {
+
+        recognition.start();
+
+    }, 200);
+
+};
+
+
+/* =========================
+   STOP RECORDING
+========================= */
+
+document.getElementById(
+    "stop"
+).onclick = () => {
+
+    if(recognition){
+
+        recognition.stop();
+
+    }
+
+};
+
+
+/* =========================
+   STORE Q&A
+========================= */
+
+document.getElementById(
+    "store"
+).onclick = () => {
+
+    errorBox.innerText =
+    "";
+
+    if(
+        !tempQuestion ||
+        !tempAnswer
+    ){
+
+        errorBox.innerText =
+        "Question or answer missing";
+
+        return;
+
+    }
+
+    // PREVENT DUPLICATE
+
+    const alreadyExists =
+    qaList.some(q => {
+
+        return (
+
+            q.question ===
+            tempQuestion
+
+            &&
+
+            q.answer ===
+            tempAnswer
+
+        );
+
+    });
+
+    if(alreadyExists){
+
+        errorBox.innerText =
+        "Already stored";
+
+        return;
+
+    }
+
+    qaList.push({
+
+        question:
+        tempQuestion,
+
+        answer:
+        tempAnswer
+
+    });
+
+    // REMOVE TEMP
+
+    if(currentBubbleQ){
+
+        currentBubbleQ.remove();
+
+    }
+
+    if(currentBubbleA){
+
+        currentBubbleA.remove();
+
+    }
+
+    currentBubbleQ = null;
+
+    currentBubbleA = null;
+
+    tempQuestion = "";
+
+    tempAnswer = "";
+
+    renderStored();
+
+};
+
+
+/* =========================
+   RENDER STORED
+========================= */
+
+function renderStored(){
+
+    storedBox.innerHTML =
+    "";
+
+    qaList.forEach(q => {
+
+        const div =
+        document.createElement(
+            "div"
+        );
+
+        div.className =
+        "stored-item";
+
+        div.innerHTML = `
+
+            <b>Q:</b>
+            ${q.question}
+
+            <br>
+
+            <b>A:</b>
+            ${q.answer}
+
+        `;
+
+        storedBox.appendChild(
+            div
+
+        );
+
+    });
+
+}
+
+
+/* =========================
+   SUBMIT
+========================= */
+
+document.getElementById(
+    "submit"
+).onclick = async () => {
+
+    errorBox.innerText =
+    "";
+
+    if(
+        !qaList ||
+        qaList.length === 0
+    ){
+
+        errorBox.innerText =
+        "Please store at least one Q&A";
+
+        return;
+
+    }
+
+    try{
+
+        const res =
+        await fetch(
+            "/api/evaluate",
+            {
+                method:"POST",
+
+                headers:{
+                    "Content-Type":
+                    "application/json"
+                },
+
+                body:JSON.stringify({
+
+                    qa_list:
+                    qaList,
+
+                    user_id:
+                    user.userid
+
+                })
+
+            }
+        );
+
+        const data =
+        await res.json();
+
+        console.log(
+            "Evaluation:",
+            data
+        );
+
+        if(data.success){
+
+            localStorage.setItem(
+
+                "qaList",
+
+                JSON.stringify(
+                    qaList
+                )
+
+            );
+
+            localStorage.setItem(
+
+                "evaluation",
+
+                JSON.stringify(
+                    data.result
+                )
+
+            );
+
+            stopWebRTC();
+
+            if(socket){
+
+                socket.send(
+
+                    JSON.stringify({
+
+                        type:
+                        "student-left"
+
+                    })
+
+                );
+
+                socket.close();
+
+            }
+
+            window.location.href =
+            "/result";
+
+        }
+
+        else{
+
+            errorBox.innerText =
+
+            data.message ||
+
+            "Evaluation failed";
+
+        }
+
+    }catch(err){
+
+        console.log(
+            "Submit Error",
+            err
+        );
+
+        errorBox.innerText =
+        "Server error";
+
+    }
+
+};
+
+
+/* =========================
+   MUTE / UNMUTE
+========================= */
+
+muteBtn.onclick = () => {
+
+    if(!localStream){
+
+        return;
+
+    }
+
+    muted = !muted;
+
+    localStream
+    .getAudioTracks()
+    .forEach(track => {
+
+        track.enabled =
+        !muted;
+
+    });
+
+    muteBtn.innerText =
+
+    muted
+
+    ?
+
+    "Unmute"
+
+    :
+
+    "Mute";
+
+    // NOTIFY SIR
+
+    if(
+        socket &&
+        socket.readyState === 1
+    ){
+
+        socket.send(
+
+            JSON.stringify({
+
+                type:
+
+                muted
+
+                ?
+
+                "student-muted"
+
+                :
+
+                "student-unmuted"
+
+            })
+
+        );
+
+    }
+
+};
+
+
+/* =========================
+   BACK
+========================= */
+
+function goBack(){
+
+    stopWebRTC();
+
+    if(
+        socket &&
+        socket.readyState === 1
+    ){
+
+        socket.send(
+
+            JSON.stringify({
+
+                type:
+                "student-left"
+
+            })
+
+        );
+
+        socket.close();
+
+    }
+
+    window.location.href =
+    "/dashboard";
+
+}

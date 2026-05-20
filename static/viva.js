@@ -221,7 +221,7 @@ function connectSocket(){
         console.log(msg);
 
         /* =====================
-           QUESTION FROM SIR
+           QUESTION
         ===================== */
 
         if(
@@ -271,7 +271,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR STARTED MIC
+           SIR MIC ON
         ===================== */
 
         if(
@@ -289,7 +289,7 @@ function connectSocket(){
         }
 
         /* =====================
-           PROFESSOR TALKING
+           SIR TALKING
         ===================== */
 
         if(
@@ -304,7 +304,7 @@ function connectSocket(){
         }
 
         /* =====================
-           PROFESSOR STOPPED
+           SIR STOPPED
         ===================== */
 
         if(
@@ -327,7 +327,7 @@ function connectSocket(){
             "webrtc-offer"
         ){
 
-            // START MEDIA
+            // START MEDIA ONLY ONCE
 
             if(!webrtcEnabled){
 
@@ -337,30 +337,48 @@ function connectSocket(){
 
             // SET REMOTE OFFER
 
-            await peerConnection
-            .setRemoteDescription(
+            if(
+                peerConnection &&
+                !peerConnection.remoteDescription
+            ){
 
-                new RTCSessionDescription(
-                    msg.offer
-                )
+                await peerConnection
+                .setRemoteDescription(
 
-            );
+                    new RTCSessionDescription(
+                        msg.offer
+                    )
 
-            // APPLY PENDING ICE
+                );
+
+            }
+
+            // APPLY ICE
 
             for(
                 const candidate
                 of pendingCandidates
             ){
 
-                await peerConnection
-                .addIceCandidate(
+                try{
 
-                    new RTCIceCandidate(
-                        candidate
-                    )
+                    await peerConnection
+                    .addIceCandidate(
 
-                );
+                        new RTCIceCandidate(
+                            candidate
+                        )
+
+                    );
+
+                }catch(err){
+
+                    console.log(
+                        "Pending ICE Error",
+                        err
+                    );
+
+                }
 
             }
 
@@ -395,7 +413,7 @@ function connectSocket(){
         }
 
         /* =====================
-           ICE CANDIDATE
+           ICE
         ===================== */
 
         if(
@@ -472,7 +490,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR ENDED CHAT
+           VOICE ENDED
         ===================== */
 
         if(
@@ -552,7 +570,22 @@ async function startStudentMedia(){
         .getUserMedia({
 
             video:{
-                facingMode:"user"
+
+                facingMode:"user",
+
+                width:{
+                    ideal:640
+                },
+
+                height:{
+                    ideal:360
+                },
+
+                frameRate:{
+                    ideal:15,
+                    max:20
+                }
+
             },
 
             audio:{
@@ -647,7 +680,7 @@ async function startStudentMedia(){
 
 
 /* =========================
-   CREATE PEER CONNECTION
+   CREATE PEER
 ========================= */
 
 function createPeerConnection(){
@@ -658,7 +691,7 @@ function createPeerConnection(){
     );
 
     /* =====================
-       RECEIVE SIR AUDIO
+       RECEIVE AUDIO
     ===================== */
 
     peerConnection.ontrack =
@@ -672,29 +705,34 @@ function createPeerConnection(){
             event.track.kind
         );
 
-        // AUDIO ONLY
+        // SINGLE AUDIO STREAM
+
+        const remoteAudio =
+        document.getElementById(
+            "remoteAudio"
+        );
 
         if(
-            event.track.kind ===
-            "audio"
+            remoteAudio &&
+            remoteAudio.srcObject !==
+            remoteStream
         ){
 
-            const remoteAudio =
-            document.getElementById(
-                "remoteAudio"
-            );
+            remoteAudio.srcObject =
+            remoteStream;
 
-            if(remoteAudio){
+            remoteAudio.volume =
+            0.2;
 
-                remoteAudio.srcObject =
-                remoteStream;
+            remoteAudio.play()
+            .catch(err => {
 
-                remoteAudio.volume =
-                0.2;
+                console.log(
+                    "Audio Play Error",
+                    err
+                );
 
-                remoteAudio.play();
-
-            }
+            });
 
         }
 
@@ -717,13 +755,42 @@ function createPeerConnection(){
 
                 JSON.stringify({
 
-                    type:"ice-candidate",
+                    type:
+                    "ice-candidate",
 
                     candidate:
                     event.candidate
 
                 })
 
+            );
+
+        }
+
+    };
+
+    /* =====================
+       CONNECTION STATE
+    ===================== */
+
+    peerConnection.onconnectionstatechange =
+    () => {
+
+        console.log(
+
+            "Connection State:",
+
+            peerConnection.connectionState
+
+        );
+
+        if(
+            peerConnection.connectionState ===
+            "failed"
+        ){
+
+            createSystemMessage(
+                "Voice connection unstable"
             );
 
         }
@@ -824,6 +891,12 @@ if(
     recognition.lang =
     "en-US";
 
+    recognition.interimResults =
+    false;
+
+    recognition.maxAlternatives =
+    1;
+
     recognition.onresult =
     (e) => {
 
@@ -885,11 +958,21 @@ if(
 
     };
 
+    recognition.onerror =
+    (e) => {
+
+        console.log(
+            "Speech Error",
+            e
+        );
+
+    };
+
 }
 
 
 /* =========================
-   CREATE CHAT BUBBLE
+   CREATE BUBBLE
 ========================= */
 
 function createBubble(text,type){
@@ -1140,6 +1223,11 @@ document.getElementById(
         const data =
         await res.json();
 
+        console.log(
+            "Evaluation:",
+            data
+        );
+
         if(data.success){
 
             localStorage.setItem(
@@ -1170,7 +1258,8 @@ document.getElementById(
 
                     JSON.stringify({
 
-                        type:"student-left"
+                        type:
+                        "student-left"
 
                     })
 
@@ -1188,14 +1277,19 @@ document.getElementById(
         else{
 
             errorBox.innerText =
+
             data.message ||
+
             "Evaluation failed";
 
         }
 
     }catch(err){
 
-        console.log(err);
+        console.log(
+            "Submit Error",
+            err
+        );
 
         errorBox.innerText =
         "Server error";
@@ -1293,7 +1387,8 @@ function goBack(){
 
             JSON.stringify({
 
-                type:"student-left"
+                type:
+                "student-left"
 
             })
 
