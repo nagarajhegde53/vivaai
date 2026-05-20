@@ -775,7 +775,9 @@ async function startVoiceChat(){
 
         }
 
-        // GET MIC
+        // IMPORTANT:
+        // video:true required
+        // for receiving student camera
 
         localStream =
         await navigator
@@ -798,7 +800,17 @@ async function startVoiceChat(){
 
             },
 
-            video:false
+            video:true
+
+        });
+
+        // DISABLE SIR CAMERA
+
+        localStream
+        .getVideoTracks()
+        .forEach(track => {
+
+            track.enabled = false;
 
         });
 
@@ -834,7 +846,13 @@ async function startVoiceChat(){
 
         const offer =
         await peerConnection
-        .createOffer();
+        .createOffer({
+
+            offerToReceiveAudio:true,
+
+            offerToReceiveVideo:true
+
+        });
 
         await peerConnection
         .setLocalDescription(
@@ -894,7 +912,7 @@ function createPeerConnection(){
         rtcConfig
     );
 
-    // RECEIVE STREAM
+    // RECEIVE AUDIO + VIDEO
 
     peerConnection.ontrack =
     (event) => {
@@ -902,42 +920,67 @@ function createPeerConnection(){
         const remoteStream =
         event.streams[0];
 
-        // AUDIO
-
-        const remoteAudio =
-        document.getElementById(
-            "remoteAudio"
+        console.log(
+            "TRACK:",
+            event.track.kind
         );
 
+        /* =====================
+           AUDIO
+        ===================== */
+
         if(
-            remoteAudio &&
-            remoteAudio.srcObject !== remoteStream
+            event.track.kind ===
+            "audio"
         ){
 
-            remoteAudio.srcObject =
-            remoteStream;
+            const remoteAudio =
+            document.getElementById(
+                "remoteAudio"
+            );
 
-            remoteAudio.volume =
-            0.2;
+            if(remoteAudio){
 
-            remoteAudio.play();
+                remoteAudio.srcObject =
+                remoteStream;
+
+                remoteAudio.volume =
+                0.2;
+
+                remoteAudio.play();
+
+            }
 
         }
 
-        // VIDEO
-
-        const studentVideo =
-        document.getElementById(
-            "studentLiveVideo"
-        );
+        /* =====================
+           VIDEO
+        ===================== */
 
         if(
-            studentVideo &&
-            studentVideo.srcObject !== remoteStream
+            event.track.kind ===
+            "video"
         ){
 
-            studentVideo.srcObject =
-            remoteStream;
+            const studentVideo =
+            document.getElementById(
+                "studentLiveVideo"
+            );
+
+            if(studentVideo){
+
+                studentVideo.srcObject =
+                remoteStream;
+
+                studentVideo.autoplay =
+                true;
+
+                studentVideo.playsInline =
+                true;
+
+                studentVideo.play();
+
+            }
 
         }
 

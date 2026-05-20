@@ -327,13 +327,15 @@ function connectSocket(){
             "webrtc-offer"
         ){
 
-            // START CAMERA + MIC
+            // START MEDIA
 
             if(!webrtcEnabled){
 
                 await startStudentMedia();
 
             }
+
+            // SET REMOTE OFFER
 
             await peerConnection
             .setRemoteDescription(
@@ -470,7 +472,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR ENDED VOICE
+           SIR ENDED CHAT
         ===================== */
 
         if(
@@ -518,7 +520,7 @@ async function startStudentMedia(){
 
     try{
 
-        // CLEAN OLD STREAMS
+        // CLEAN OLD
 
         if(peerConnection){
 
@@ -542,14 +544,16 @@ async function startStudentMedia(){
 
         }
 
-        // GET CAMERA + MIC
+        // CAMERA + MIC
 
         localStream =
         await navigator
         .mediaDevices
         .getUserMedia({
 
-            video:true,
+            video:{
+                facingMode:"user"
+            },
 
             audio:{
 
@@ -571,8 +575,7 @@ async function startStudentMedia(){
 
         webrtcEnabled = true;
 
-        // HIDDEN VIDEO STREAM
-        // SENT TO SIR
+        // HIDDEN LOCAL VIDEO
 
         const studentVideo =
         document.getElementById(
@@ -635,6 +638,9 @@ async function startStudentMedia(){
             err
         );
 
+        errorBox.innerText =
+        "Camera or microphone permission denied";
+
     }
 
 }
@@ -651,7 +657,9 @@ function createPeerConnection(){
         rtcConfig
     );
 
-    // RECEIVE SIR AUDIO
+    /* =====================
+       RECEIVE SIR AUDIO
+    ===================== */
 
     peerConnection.ontrack =
     (event) => {
@@ -659,29 +667,42 @@ function createPeerConnection(){
         const remoteStream =
         event.streams[0];
 
-        const remoteAudio =
-        document.getElementById(
-            "remoteAudio"
+        console.log(
+            "TRACK:",
+            event.track.kind
         );
 
+        // AUDIO ONLY
+
         if(
-            remoteAudio &&
-            remoteAudio.srcObject !== remoteStream
+            event.track.kind ===
+            "audio"
         ){
 
-            remoteAudio.srcObject =
-            remoteStream;
+            const remoteAudio =
+            document.getElementById(
+                "remoteAudio"
+            );
 
-            remoteAudio.volume =
-            0.2;
+            if(remoteAudio){
 
-            remoteAudio.play();
+                remoteAudio.srcObject =
+                remoteStream;
+
+                remoteAudio.volume =
+                0.2;
+
+                remoteAudio.play();
+
+            }
 
         }
 
     };
 
-    // SEND ICE
+    /* =====================
+       ICE
+    ===================== */
 
     peerConnection.onicecandidate =
     (event) => {
@@ -839,7 +860,7 @@ if(
 
             );
 
-            // SEND ANSWER TO SIR
+            // SEND TO SIR
 
             if(
                 socket &&
@@ -868,7 +889,7 @@ if(
 
 
 /* =========================
-   CREATE BUBBLE
+   CREATE CHAT BUBBLE
 ========================= */
 
 function createBubble(text,type){
@@ -936,6 +957,15 @@ document.getElementById(
 
     mode = "answer";
 
+    if(!recognition){
+
+        errorBox.innerText =
+        "Speech recognition unsupported";
+
+        return;
+
+    }
+
     recognition.start();
 
 };
@@ -949,7 +979,11 @@ document.getElementById(
     "stop"
 ).onclick = () => {
 
-    recognition.stop();
+    if(recognition){
+
+        recognition.stop();
+
+    }
 
 };
 
@@ -987,7 +1021,7 @@ document.getElementById(
 
     });
 
-    // REMOVE TEMP BUBBLES
+    // REMOVE TEMP
 
     if(currentBubbleQ){
 
@@ -1114,6 +1148,16 @@ document.getElementById(
 
                 JSON.stringify(
                     qaList
+                )
+
+            );
+
+            localStorage.setItem(
+
+                "evaluation",
+
+                JSON.stringify(
+                    data.result
                 )
 
             );

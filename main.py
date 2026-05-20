@@ -650,89 +650,485 @@ async def login(request: Request):
         "message": "Invalid credentials"
 
     }
-# ---------- AI EVALUATION ----------
+# # ---------- AI EVALUATION ----------
+# @app.post("/api/evaluate")
+# async def evaluate(request: Request):
+#     data = await request.json()
+#     qa_list = data.get("qa_list", [])
+#     user_id = data.get("user_id")
+
+#     if not qa_list:
+#         return {"success": False, "message": "No Q&A provided"}
+
+#     content = ""
+#     for qa in qa_list:
+#         content += f"Q: {qa['question']}\nA: {qa['answer']}\n\n"
+
+#     prompt = f"""
+# Evaluate this viva:
+
+# {content}
+
+# Return JSON ONLY:
+# {{
+# "score": 0-10,
+# "communication": 0-100,
+# "critical": 0-100,
+# "problem_solving": 0-100,
+# "creativity": 0-100,
+# "weak_topics": [],
+# "strong_topics": [],
+# "suggestions": "text"
+# }}
+# """
+
+#     try:
+#         res = client.chat.completions.create(
+#             model="llama-3.1-8b-instant",
+#             messages=[{"role":"user","content":prompt}]
+#         )
+
+#         text = res.choices[0].message.content
+#         match = re.search(r"\{.*\}", text, re.DOTALL)
+#         result = json.loads(match.group(0))
+
+#     except:
+#         result = {}
+
+#     # ✅ SAFE FALLBACKS
+#     score = result.get("score", 5)
+#     communication = result.get("communication", 50)
+#     critical = result.get("critical", 50)
+#     problem_solving = result.get("problem_solving", 50)
+#     creativity = result.get("creativity", 50)
+#     weak_topics = result.get("weak_topics", ["General"])
+#     strong_topics = result.get("strong_topics", ["Basic"])
+#     suggestions = result.get("suggestions", "Improve clarity and structure")
+
+#     conn = get_db()
+#     cur = conn.cursor()
+
+#     cur.execute("""
+#     INSERT INTO results(
+#         user_id, score, communication, critical,
+#         problem_solving, creativity,
+#         weak_topics, strong_topics, suggestions
+#     )
+#     VALUES (?,?,?,?,?,?,?,?,?)
+#     """, (
+#         user_id,
+#         score,
+#         communication,
+#         critical,
+#         problem_solving,
+#         creativity,
+#         json.dumps(weak_topics),
+#         json.dumps(strong_topics),
+#         suggestions
+#     ))
+    
+
+#     conn.commit()
+#     conn.close()
+
+#     return {"success": True}
+
+
+# =========================
+# AI EVALUATION
+# =========================
+
 @app.post("/api/evaluate")
 async def evaluate(request: Request):
+
     data = await request.json()
-    qa_list = data.get("qa_list", [])
-    user_id = data.get("user_id")
+
+    qa_list = data.get(
+        "qa_list",
+        []
+    )
+
+    user_id = data.get(
+        "user_id"
+    )
+
+    # =====================
+    # VALIDATION
+    # =====================
 
     if not qa_list:
-        return {"success": False, "message": "No Q&A provided"}
+
+        return {
+
+            "success": False,
+
+            "message":
+            "No Q&A provided"
+
+        }
+
+    # =====================
+    # BUILD CONTENT
+    # =====================
 
     content = ""
+
     for qa in qa_list:
-        content += f"Q: {qa['question']}\nA: {qa['answer']}\n\n"
+
+        question =qa.get(
+            "question",
+            ""
+        )
+
+        
+        answer = qa.get(
+            "answer",
+            ""
+        )
+       
+
+        content += f"""
+
+Question:
+{question}
+
+Answer:
+{answer}
+
+"""
+
+    # =====================
+    # AI PROMPT
+    # =====================
 
     prompt = f"""
-Evaluate this viva:
+
+You are an expert viva examiner.
+
+Evaluate the following viva responses carefully.
+
+Give realistic scoring based on:
+
+- communication
+- critical thinking
+- problem solving
+- creativity
+- technical understanding
+
+VIVA CONTENT:
 
 {content}
 
-Return JSON ONLY:
+IMPORTANT:
+
+Return ONLY valid JSON.
+
+NO markdown.
+NO explanation.
+NO extra text.
+
+Format:
+
 {{
-"score": 0-10,
-"communication": 0-100,
-"critical": 0-100,
-"problem_solving": 0-100,
-"creativity": 0-100,
-"weak_topics": [],
-"strong_topics": [],
-"suggestions": "text"
+    "score": 0-10,
+    "communication": 0-100,
+    "critical": 0-100,
+    "problem_solving": 0-100,
+    "creativity": 0-100,
+    "weak_topics": [],
+    "strong_topics": [],
+    "suggestions": "text"
 }}
+
 """
 
+    # =====================
+    # AI CALL
+    # =====================
+
     try:
+
         res = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role":"user","content":prompt}]
+
+       
+            model=
+            "llama-3.3-70b-versatile",
+
+            messages=[
+
+                {
+                    "role":"system",
+
+                    "content":"""
+
+You are a strict JSON generator.
+
+Always return ONLY valid JSON.
+
+No markdown.
+No explanation.
+No extra text.
+
+"""
+
+                },
+
+                {
+                    "role":"user",
+
+                    "content":prompt
+                }
+
+            ],
+
+            temperature=0.2
+
         )
 
-        text = res.choices[0].message.content
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        result = json.loads(match.group(0))
+        # =================
+        # RAW RESPONSE
+        # =================
 
-    except:
+        text =res.choices[0] .message.content
+        
+       
+
+        print(
+            "RAW AI RESPONSE:"
+        )
+
+        print(text)
+
+        # =================
+        # CLEAN RESPONSE
+        # =================
+
+        text =text.strip()
+        
+
+        text =text.replace(
+            "```json",
+            ""
+        )
+
+        
+        text = text.replace(
+            "```",
+            ""
+        )
+
+       
+        text = text.strip()
+       
+
+        # =================
+        # PARSE JSON
+        # =================
+
+        result =json.loads(text)
+        
+
+        print(
+            "PARSED RESULT:",
+            result
+        )
+
+    except Exception as e:
+
+        print(
+            "AI EVALUATION ERROR:",
+            e
+        )
+
         result = {}
 
-    # ✅ SAFE FALLBACKS
-    score = result.get("score", 5)
-    communication = result.get("communication", 50)
-    critical = result.get("critical", 50)
-    problem_solving = result.get("problem_solving", 50)
-    creativity = result.get("creativity", 50)
-    weak_topics = result.get("weak_topics", ["General"])
-    strong_topics = result.get("strong_topics", ["Basic"])
-    suggestions = result.get("suggestions", "Improve clarity and structure")
+    # =====================
+    # SAFE FALLBACKS
+    # =====================
 
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("""
-    INSERT INTO results(
-        user_id, score, communication, critical,
-        problem_solving, creativity,
-        weak_topics, strong_topics, suggestions
+    score = result.get(
+        "score",
+        5
     )
-    VALUES (?,?,?,?,?,?,?,?,?)
-    """, (
-        user_id,
-        score,
-        communication,
-        critical,
-        problem_solving,
-        creativity,
-        json.dumps(weak_topics),
-        json.dumps(strong_topics),
-        suggestions
-    ))
+
+   
+    communication = result.get(
+        "communication",
+        50
+    )
+   
+
+    critical =result.get(
+        "critical",
+        50
+    )
+
+    
+    problem_solving =result.get(
+        "problem_solving",
+        50
+    )
     
 
+    creativity =result.get(
+        "creativity",
+        50
+    )
+    
+
+    weak_topics =result.get(
+        "weak_topics",
+        ["General"]
+    )
+
+    
+    strong_topics = result.get(
+        "strong_topics",
+        ["Basic"]
+    )
+
+   
+    suggestions =result.get(
+        "suggestions",
+        "Improve clarity and structure"
+    )
+    
+
+    # =====================
+    # DATABASE
+    # =====================
+
+    conn = get_db()
+
+    cur = conn.cursor()
+
+    # CREATE TABLE SAFETY
+
+    cur.execute("""
+
+    CREATE TABLE IF NOT EXISTS results(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        user_id INTEGER,
+
+        score INTEGER,
+
+        communication INTEGER,
+
+        critical INTEGER,
+
+        problem_solving INTEGER,
+
+        creativity INTEGER,
+
+        weak_topics TEXT,
+
+        strong_topics TEXT,
+
+        suggestions TEXT
+
+    )
+
+    """)
+
+    # INSERT RESULT
+
+    cur.execute("""
+
+    INSERT INTO results(
+
+        user_id,
+
+        score,
+
+        communication,
+
+        critical,
+
+        problem_solving,
+
+        creativity,
+
+        weak_topics,
+
+        strong_topics,
+
+        suggestions
+
+    )
+
+    VALUES (?,?,?,?,?,?,?,?,?)
+
+    """, (
+
+        user_id,
+
+        score,
+
+        communication,
+
+        critical,
+
+        problem_solving,
+
+        creativity,
+
+        json.dumps(
+            weak_topics
+        ),
+
+        json.dumps(
+            strong_topics
+        ),
+
+        suggestions
+
+    ))
+
     conn.commit()
+
     conn.close()
 
-    return {"success": True}
+    # =====================
+    # RESPONSE
+    # =====================
 
+    return {
+
+        "success": True,
+
+        "result": {
+
+            "score":
+            score,
+
+            "communication":
+            communication,
+
+            "critical":
+            critical,
+
+            "problem_solving":
+            problem_solving,
+
+            "creativity":
+            creativity,
+
+            "weak_topics":
+            weak_topics,
+
+            "strong_topics":
+            strong_topics,
+
+            "suggestions":
+            suggestions
+
+        }
+
+    }
+
+# ------------------------------end 
 #get result
 @app.post("/api/get-result")
 async def get_result(request: Request):
