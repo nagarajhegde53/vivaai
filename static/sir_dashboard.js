@@ -125,6 +125,8 @@ let muted = false;
 
 let pendingCandidates = [];
 
+let remoteStreamAttached = false;
+
 
 /* =========================
    RTC CONFIG
@@ -132,14 +134,20 @@ let pendingCandidates = [];
 
 const rtcConfig = {
 
-    iceServers: [
+    iceServers:[
 
         {
             urls:
             "stun:stun.l.google.com:19302"
         }
 
-    ]
+    ],
+
+    bundlePolicy:"max-bundle",
+
+    rtcpMuxPolicy:"require",
+
+    iceCandidatePoolSize:10
 
 };
 
@@ -160,6 +168,7 @@ startBtn.onclick = () => {
 
         controls.classList.add(
             "show"
+
         );
 
     }, 100);
@@ -337,78 +346,90 @@ function connectSocket(){
 
             }
 
-            // PREVENT DUPLICATE OFFER
+            try{
 
-            if(
-                peerConnection &&
-                !peerConnection.remoteDescription
-            ){
+                // PREVENT DUPLICATE OFFER
 
-                await peerConnection
-                .setRemoteDescription(
-
-                    new RTCSessionDescription(
-                        msg.offer
-                    )
-
-                );
-
-            }
-
-            // APPLY PENDING ICE
-
-            for(
-                const candidate
-                of pendingCandidates
-            ){
-
-                try{
+                if(
+                    peerConnection &&
+                    !peerConnection.remoteDescription
+                ){
 
                     await peerConnection
-                    .addIceCandidate(
+                    .setRemoteDescription(
 
-                        new RTCIceCandidate(
-                            candidate
+                        new RTCSessionDescription(
+                            msg.offer
                         )
 
                     );
 
-                }catch(err){
+                }
 
-                    console.log(
-                        "Pending ICE Error",
-                        err
-                    );
+                // APPLY PENDING ICE
+
+                for(
+                    const candidate
+                    of pendingCandidates
+                ){
+
+                    try{
+
+                        await peerConnection
+                        .addIceCandidate(
+
+                            new RTCIceCandidate(
+                                candidate
+                            )
+
+                        );
+
+                    }catch(err){
+
+                        console.log(
+                            "Pending ICE Error",
+                            err
+                        );
+
+                    }
 
                 }
 
+                pendingCandidates = [];
+
+                // CREATE ANSWER
+
+                const answer =
+                await peerConnection
+                .createAnswer();
+
+                await peerConnection
+                .setLocalDescription(
+                    answer
+                );
+
+                socket.send(
+
+                    JSON.stringify({
+
+                        type:
+                        "webrtc-answer",
+
+                        answer:
+                        peerConnection.localDescription
+
+                    })
+
+                );
+
+            }catch(err){
+
+                console.log(
+                    "Offer Error",
+                    err
+                );
+
             }
-
-            pendingCandidates = [];
-
-            // CREATE ANSWER
-
-            const answer =
-            await peerConnection
-            .createAnswer();
-
-            await peerConnection
-            .setLocalDescription(
-                answer
-            );
-
-            socket.send(
-
-                JSON.stringify({
-
-                    type:
-                    "webrtc-answer",
-
-                    answer:answer
-
-                })
-
-            );
 
         }
 
@@ -544,27 +565,7 @@ async function startStudentMedia(){
 
         // CLEAN OLD
 
-        if(peerConnection){
-
-            peerConnection.close();
-
-            peerConnection = null;
-
-        }
-
-        if(localStream){
-
-            localStream
-            .getTracks()
-            .forEach(track => {
-
-                track.stop();
-
-            });
-
-            localStream = null;
-
-        }
+        stopWebRTC();
 
         // CAMERA + MIC
 
@@ -578,16 +579,16 @@ async function startStudentMedia(){
                 facingMode:"user",
 
                 width:{
-                    ideal:480
+                    ideal:640
                 },
 
                 height:{
-                    ideal:270
+                    ideal:360
                 },
 
                 frameRate:{
-                    ideal:12,
-                    max:15
+                    ideal:15,
+                    max:20
                 }
 
             },
@@ -598,13 +599,7 @@ async function startStudentMedia(){
 
                 noiseSuppression:true,
 
-                autoGainControl:false,
-
-                channelCount:1,
-
-                sampleRate:48000,
-
-                sampleSize:16
+                autoGainControl:true
 
             }
 
@@ -612,12 +607,24 @@ async function startStudentMedia(){
 
         webrtcEnabled = true;
 
-        // HIDDEN VIDEO
+        // LOCAL PREVIEW
 
         if(studentVideo){
 
             studentVideo.srcObject =
             localStream;
+
+            studentVideo.autoplay =
+            true;
+
+            studentVideo.playsInline =
+            true;
+
+            studentVideo.muted =
+            true;
+
+            studentVideo.style.objectFit =
+            "cover";
 
         }
 
@@ -706,44 +713,40 @@ function createPeerConnection(){
                 event.track.kind
             );
 
-            if(!remoteAudio){
-
-                return;
-
-            }
-
-            // PREVENT DUPLICATE
-
             if(
-                remoteAudio.srcObject ===
-                remoteStream
+                remoteStreamAttached
             ){
 
                 return;
 
             }
 
-            // ATTACH STREAM
-
-            remoteAudio.srcObject =
-            remoteStream;
-
-            remoteAudio.autoplay =
+            remoteStreamAttached =
             true;
 
-            remoteAudio.volume =
-            0.25;
+            if(remoteAudio){
 
-            try{
+                remoteAudio.srcObject =
+                remoteStream;
 
-                await remoteAudio.play();
+                remoteAudio.autoplay =
+                true;
 
-            }catch(playErr){
+                remoteAudio.playsInline =
+                true;
 
-                console.log(
-                    "Audio autoplay blocked",
-                    playErr
-                );
+                try{
+
+                    await remoteAudio.play();
+
+                }catch(playErr){
+
+                    console.log(
+                        "Audio autoplay blocked",
+                        playErr
+                    );
+
+                }
 
             }
 
@@ -810,20 +813,16 @@ function createPeerConnection(){
 
         );
 
-        // FAILED
-
         if(
             peerConnection.connectionState ===
-            "failed"
+            "connected"
         ){
 
             createSystemMessage(
-                "Connection unstable"
+                "Voice connected"
             );
 
         }
-
-        // DISCONNECTED
 
         if(
             peerConnection.connectionState ===
@@ -836,15 +835,13 @@ function createPeerConnection(){
 
         }
 
-        // CONNECTED
-
         if(
             peerConnection.connectionState ===
-            "connected"
+            "failed"
         ){
 
             createSystemMessage(
-                "Voice connected"
+                "Connection unstable"
             );
 
         }
@@ -866,7 +863,7 @@ function stopWebRTC(){
 
         localStream
         .getTracks()
-        .forEach(track => {
+               .forEach(track => {
 
             track.stop();
 
@@ -885,6 +882,11 @@ function stopWebRTC(){
         peerConnection = null;
 
     }
+
+    // RESET STREAM FLAG
+
+    remoteStreamAttached =
+    false;
 
     // RESET VIDEO
 
@@ -959,8 +961,6 @@ if(
 
             tempAnswer =
             text;
-
-            // REMOVE OLD
 
             if(currentBubbleA){
 
@@ -1098,7 +1098,7 @@ document.getElementById(
 
     try{
 
-        recognition.stop();
+        recognition.abort();
 
     }catch(e){}
 
@@ -1106,7 +1106,7 @@ document.getElementById(
 
         recognition.start();
 
-    }, 200);
+    }, 150);
 
 };
 
@@ -1340,6 +1340,8 @@ document.getElementById(
 
             if(socket){
 
+                socket.onclose = null;
+
                 socket.send(
 
                     JSON.stringify({
@@ -1464,6 +1466,8 @@ function goBack(){
         socket &&
         socket.readyState === 1
     ){
+
+        socket.onclose = null;
 
         socket.send(
 

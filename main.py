@@ -780,17 +780,15 @@ async def evaluate(request: Request):
 
     for qa in qa_list:
 
-        question =qa.get(
+        question = qa.get(
             "question",
             ""
         )
 
-        
         answer = qa.get(
             "answer",
             ""
         )
-       
 
         content += f"""
 
@@ -803,28 +801,14 @@ Answer:
 """
 
     # =====================
-    # AI PROMPT
+    # PROMPT
     # =====================
 
     prompt = f"""
 
-You are an expert viva examiner.
+You are an expert viva evaluator.
 
-Evaluate the following viva responses carefully.
-
-Give realistic scoring based on:
-
-- communication
-- critical thinking
-- problem solving
-- creativity
-- technical understanding
-
-VIVA CONTENT:
-
-{content}
-
-IMPORTANT:
+Analyze the student's answers carefully.
 
 Return ONLY valid JSON.
 
@@ -832,20 +816,49 @@ NO markdown.
 NO explanation.
 NO extra text.
 
-Format:
+FORMAT:
 
 {{
-    "score": 0-10,
-    "communication": 0-100,
-    "critical": 0-100,
-    "problem_solving": 0-100,
-    "creativity": 0-100,
+    "score": 0,
+    "communication": 0,
+    "critical": 0,
+    "problem_solving": 0,
+    "creativity": 0,
     "weak_topics": [],
     "strong_topics": [],
-    "suggestions": "text"
+    "suggestions": ""
 }}
 
+VIVA CONTENT:
+
+{content}
+
 """
+
+    # =====================
+    # DEFAULT RESULT
+    # =====================
+
+    result = {
+
+        "score": 5,
+
+        "communication": 50,
+
+        "critical": 50,
+
+        "problem_solving": 50,
+
+        "creativity": 50,
+
+        "weak_topics": ["General"],
+
+        "strong_topics": ["Basic"],
+
+        "suggestions":
+        "Improve clarity and technical depth"
+
+    }
 
     # =====================
     # AI CALL
@@ -853,11 +866,11 @@ Format:
 
     try:
 
-        res = client.chat.completions.create(
+        res =client.chat.completions.create(
+        
 
-       
             model=
-            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
 
             messages=[
 
@@ -866,27 +879,29 @@ Format:
 
                     "content":"""
 
-You are a strict JSON generator.
+You are a JSON API.
 
-Always return ONLY valid JSON.
+Return ONLY valid JSON.
 
 No markdown.
 No explanation.
 No extra text.
 
 """
-
                 },
 
                 {
                     "role":"user",
 
-                    "content":prompt
+                    "content":
+                    prompt
                 }
 
             ],
 
-            temperature=0.2
+            temperature=0.2,
+
+            max_tokens=500
 
         )
 
@@ -894,9 +909,11 @@ No extra text.
         # RAW RESPONSE
         # =================
 
-        text =res.choices[0] .message.content
-        
-       
+        text = (
+            res.choices[0]
+            .message.content
+            .strip()
+        )
 
         print(
             "RAW AI RESPONSE:"
@@ -908,96 +925,66 @@ No extra text.
         # CLEAN RESPONSE
         # =================
 
-        text =text.strip()
-        
-
-        text =text.replace(
+        text = text.replace(
             "```json",
             ""
         )
 
-        
         text = text.replace(
             "```",
             ""
         )
 
-       
         text = text.strip()
+
+        # =================
+        # EXTRACT JSON
+        # =================
+
+        start = text.find("{")
        
 
-        # =================
-        # PARSE JSON
-        # =================
+        end =text.rfind("}")
 
-        result =json.loads(text)
         
+        if(
+            start != -1 and
+            end != -1
+        ):
+
+            text = text[start:end+1]
+           
 
         print(
-            "PARSED RESULT:",
-            result
+            "CLEANED JSON:"
         )
+
+        print(text)
+
+        # =================
+        # PARSE
+        # =================
+
+        parsed = json.loads(text)
+       
+
+        # MERGE SAFELY
+
+        result.update(parsed)
+
+        print(
+            "FINAL RESULT:"
+        )
+
+        print(result)
 
     except Exception as e:
 
         print(
-            "AI EVALUATION ERROR:",
-            e
+            "AI EVALUATION ERROR:"
         )
 
-        result = {}
-
-    # =====================
-    # SAFE FALLBACKS
-    # =====================
-
-    score = result.get(
-        "score",
-        5
-    )
-
-   
-    communication = result.get(
-        "communication",
-        50
-    )
-   
-
-    critical =result.get(
-        "critical",
-        50
-    )
-
-    
-    problem_solving =result.get(
-        "problem_solving",
-        50
-    )
-    
-
-    creativity =result.get(
-        "creativity",
-        50
-    )
-    
-
-    weak_topics =result.get(
-        "weak_topics",
-        ["General"]
-    )
-
-    
-    strong_topics = result.get(
-        "strong_topics",
-        ["Basic"]
-    )
-
-   
-    suggestions =result.get(
-        "suggestions",
-        "Improve clarity and structure"
-    )
-    
+        print(str(e))
 
     # =====================
     # DATABASE
@@ -1006,8 +993,6 @@ No extra text.
     conn = get_db()
 
     cur = conn.cursor()
-
-    # CREATE TABLE SAFETY
 
     cur.execute("""
 
@@ -1037,28 +1022,18 @@ No extra text.
 
     """)
 
-    # INSERT RESULT
-
     cur.execute("""
 
     INSERT INTO results(
 
         user_id,
-
         score,
-
         communication,
-
         critical,
-
         problem_solving,
-
         creativity,
-
         weak_topics,
-
         strong_topics,
-
         suggestions
 
     )
@@ -1069,25 +1044,25 @@ No extra text.
 
         user_id,
 
-        score,
+        result["score"],
 
-        communication,
+        result["communication"],
 
-        critical,
+        result["critical"],
 
-        problem_solving,
+        result["problem_solving"],
 
-        creativity,
+        result["creativity"],
 
         json.dumps(
-            weak_topics
+            result["weak_topics"]
         ),
 
         json.dumps(
-            strong_topics
+            result["strong_topics"]
         ),
 
-        suggestions
+        result["suggestions"]
 
     ))
 
@@ -1103,33 +1078,7 @@ No extra text.
 
         "success": True,
 
-        "result": {
-
-            "score":
-            score,
-
-            "communication":
-            communication,
-
-            "critical":
-            critical,
-
-            "problem_solving":
-            problem_solving,
-
-            "creativity":
-            creativity,
-
-            "weak_topics":
-            weak_topics,
-
-            "strong_topics":
-            strong_topics,
-
-            "suggestions":
-            suggestions
-
-        }
+        "result": result
 
     }
 
