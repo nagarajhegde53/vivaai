@@ -67,9 +67,13 @@ document.getElementById(
    USER
 ========================= */
 
+// FIXED:
+// separate storage key
+// prevents sir dashboard logout
+
 const userData =
 localStorage.getItem(
-    "user"
+    "student_user"
 );
 
 if(!userData){
@@ -306,7 +310,7 @@ function connectSocket(){
         }
 
         /* =====================
-           SIR TALKING
+           SIR SPEAKING
         ===================== */
 
         if(
@@ -370,7 +374,7 @@ function connectSocket(){
 
                 }
 
-                // APPLY ICE
+                // APPLY PENDING ICE
 
                 for(
                     const candidate
@@ -573,11 +577,7 @@ async function startStudentMedia(){
 
     try{
 
-        // CLEAN OLD
-
         stopWebRTC();
-
-        // CAMERA + MIC
 
         localStream =
         await navigator
@@ -867,8 +867,6 @@ function createPeerConnection(){
 
 function stopWebRTC(){
 
-    // STOP TRACKS
-
     if(localStream){
 
         localStream
@@ -883,8 +881,6 @@ function stopWebRTC(){
 
     }
 
-    // CLOSE PEER
-
     if(peerConnection){
 
         peerConnection.close();
@@ -893,12 +889,8 @@ function stopWebRTC(){
 
     }
 
-    // RESET STREAM FLAG
-
     remoteStreamAttached =
     false;
-
-    // RESET VIDEO
 
     if(studentVideo){
 
@@ -906,8 +898,6 @@ function stopWebRTC(){
         null;
 
     }
-
-    // RESET AUDIO
 
     if(remoteAudio){
 
@@ -959,10 +949,6 @@ if(
         const text =
         e.results[0][0]
         .transcript;
-
-        /* =====================
-           ANSWER
-        ===================== */
 
         if(
             mode ===
@@ -1159,8 +1145,6 @@ document.getElementById(
 
     }
 
-    // PREVENT DUPLICATE
-
     const alreadyExists =
     qaList.some(q => {
 
@@ -1196,8 +1180,6 @@ document.getElementById(
         tempAnswer
 
     });
-
-    // REMOVE TEMP
 
     if(currentBubbleQ){
 
@@ -1430,8 +1412,6 @@ if(muteBtn){
         :
 
         "Mute";
-
-        // NOTIFY SIR
 
         if(
             socket &&
