@@ -753,7 +753,6 @@ async def login(request: Request):
 # =========================
 # AI EVALUATION
 # =========================
-
 @app.post("/api/evaluate")
 async def evaluate(request: Request):
 
@@ -812,14 +811,35 @@ Answer:
 """
 
     # =====================
-    # PROMPT
+    # BETTER PROMPT
     # =====================
 
     prompt = f"""
 
-You are an expert viva evaluator.
+You are a supportive university viva evaluator.
 
-Analyze the student's answers carefully.
+Evaluate the student fairly and realistically.
+
+Do NOT be overly strict.
+
+Even partially correct answers should receive moderate scores.
+
+Scoring Rules:
+
+Excellent:
+85-100
+
+Good:
+70-84
+
+Average:
+50-69
+
+Weak:
+30-49
+
+Very poor:
+0-29
 
 Return ONLY valid JSON.
 
@@ -847,27 +867,27 @@ VIVA CONTENT:
 """
 
     # =====================
-    # DEFAULT RESULT
+    # SAFE DEFAULTS
     # =====================
 
     result = {
 
-        "score": 5,
+        "score": 60,
 
-        "communication": 50,
+        "communication": 65,
 
-        "critical": 50,
+        "critical": 60,
 
-        "problem_solving": 50,
+        "problem_solving": 60,
 
-        "creativity": 50,
+        "creativity": 60,
 
         "weak_topics": ["General"],
 
-        "strong_topics": ["Basic"],
+        "strong_topics": ["Basic Understanding"],
 
         "suggestions":
-        "Improve clarity and technical depth"
+        "Try improving explanation clarity"
 
     }
 
@@ -877,8 +897,7 @@ VIVA CONTENT:
 
     try:
 
-        res =client.chat.completions.create(
-        
+        res = client.chat.completions.create(
 
             model=
             "llama-3.1-8b-instant",
@@ -894,9 +913,7 @@ You are a JSON API.
 
 Return ONLY valid JSON.
 
-No markdown.
-No explanation.
-No extra text.
+Never return markdown.
 
 """
                 },
@@ -910,7 +927,7 @@ No extra text.
 
             ],
 
-            temperature=0.2,
+            temperature=0.3,
 
             max_tokens=500
 
@@ -953,18 +970,15 @@ No extra text.
         # =================
 
         start = text.find("{")
-       
 
-        end =text.rfind("}")
+        end = text.rfind("}")
 
-        
         if(
             start != -1 and
             end != -1
         ):
 
             text = text[start:end+1]
-           
 
         print(
             "CLEANED JSON:"
@@ -977,9 +991,88 @@ No extra text.
         # =================
 
         parsed = json.loads(text)
-       
 
-        # MERGE SAFELY
+        # =================
+        # SAFE NUMBERS
+        # =================
+
+        parsed["score"] = max(
+            0,
+            min(
+                100,
+                int(parsed.get("score", 60))
+            )
+        )
+
+        parsed["communication"] = max(
+            0,
+            min(
+                100,
+                int(parsed.get("communication", 65))
+            )
+        )
+
+        parsed["critical"] = max(
+            0,
+            min(
+                100,
+                int(parsed.get("critical", 60))
+            )
+        )
+
+        parsed["problem_solving"] = max(
+            0,
+            min(
+                100,
+                int(parsed.get("problem_solving", 60))
+            )
+        )
+
+        parsed["creativity"] = max(
+            0,
+            min(
+                100,
+                int(parsed.get("creativity", 60))
+            )
+        )
+
+        # =================
+        # SAFE ARRAYS
+        # =================
+
+        if not isinstance(
+            parsed.get("weak_topics"),
+            list
+        ):
+
+            parsed["weak_topics"] = [
+                "General"
+            ]
+
+        if not isinstance(
+            parsed.get("strong_topics"),
+            list
+        ):
+
+            parsed["strong_topics"] = [
+                "Basic Understanding"
+            ]
+
+        # =================
+        # SAFE STRING
+        # =================
+
+        if not isinstance(
+            parsed.get("suggestions"),
+            str
+        ):
+
+            parsed["suggestions"] = \
+            "Keep practicing viva communication"
+
+        # =================
+        # MERGE
+        # =================
 
         result.update(parsed)
 
@@ -1004,34 +1097,6 @@ No extra text.
     conn = get_db()
 
     cur = conn.cursor()
-
-    cur.execute("""
-
-    CREATE TABLE IF NOT EXISTS results(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        user_id INTEGER,
-
-        score INTEGER,
-
-        communication INTEGER,
-
-        critical INTEGER,
-
-        problem_solving INTEGER,
-
-        creativity INTEGER,
-
-        weak_topics TEXT,
-
-        strong_topics TEXT,
-
-        suggestions TEXT
-
-    )
-
-    """)
 
     cur.execute("""
 
@@ -1081,10 +1146,6 @@ No extra text.
 
     conn.close()
 
-    # =====================
-    # RESPONSE
-    # =====================
-
     return {
 
         "success": True,
@@ -1092,7 +1153,7 @@ No extra text.
         "result": result
 
     }
-
+# ------------------------end -----------------------------
 # live analysis 
 @app.post("/api/live-analysis")
 async def live_analysis(request: Request):

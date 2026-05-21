@@ -1578,19 +1578,17 @@ function updateAIAnalysis(data){
 
 }
 
-
-
 /* =========================
-   ADD WARNING
+   MONITORING WARNING
 ========================= */
 
 function addWarning(text){
 
-   const monitorSection =
+    const monitorSection =
 
-document.querySelector(
-    ".monitor-list"
-);
+    document.querySelector(
+        ".monitor-list"
+    );
 
     if(!monitorSection){
 
@@ -1612,5 +1610,28 @@ document.querySelector(
     monitorSection.appendChild(
         div
     );
+
+    /* =====================
+       KEEP ONLY LAST 10
+    ===================== */
+
+    const warnings =
+
+    monitorSection.querySelectorAll(
+        ".warning"
+    );
+
+    if(warnings.length > 10){
+
+        warnings[0].remove();
+
+    }
+
+    /* =====================
+       AUTO SCROLL
+    ===================== */
+
+    monitorSection.scrollTop =
+    monitorSection.scrollHeight;
 
 }
