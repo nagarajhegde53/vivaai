@@ -398,89 +398,118 @@ function connectSocket(){
         /* =====================
            WEBRTC OFFER
         ===================== */
+if(
+    msg.type ===
+    "webrtc-offer"
+){
+
+    try{
+
+        /* =================
+           CREATE PEER
+        ================= */
+
+        if(!peerConnection){
+
+            createPeerConnection();
+
+        }
+
+        /* =================
+           SET REMOTE
+        ================= */
 
         if(
-            msg.type ===
-            "webrtc-offer"
+            !peerConnection.remoteDescription
+        ){
+
+            await peerConnection
+            .setRemoteDescription(
+
+                new RTCSessionDescription(
+                    msg.offer
+                )
+
+            );
+
+        }
+
+        /* =================
+           APPLY ICE
+        ================= */
+
+        for(
+            const candidate
+            of pendingCandidates
         ){
 
             try{
 
-                if(
-                    peerConnection &&
-                    !peerConnection.remoteDescription
-                ){
-
-                    await peerConnection
-                    .setRemoteDescription(
-
-                        new RTCSessionDescription(
-                            msg.offer
-                        )
-
-                    );
-
-                }
-
-                for(
-                    const candidate
-                    of pendingCandidates
-                ){
-
-                    try{
-
-                        await peerConnection
-                        .addIceCandidate(
-
-                            new RTCIceCandidate(
-                                candidate
-                            )
-
-                        );
-
-                    }catch(err){
-
-                        console.log(err);
-
-                    }
-
-                }
-
-                pendingCandidates = [];
-
-                const answer =
                 await peerConnection
-                .createAnswer();
+                .addIceCandidate(
 
-                await peerConnection
-                .setLocalDescription(
-                    answer
-                );
-
-                socket.send(
-
-                    JSON.stringify({
-
-                        type:
-                        "webrtc-answer",
-
-                        answer:
-                        peerConnection.localDescription
-
-                    })
+                    new RTCIceCandidate(
+                        candidate
+                    )
 
                 );
 
             }catch(err){
 
-                console.log(
-                    "Offer Error",
-                    err
-                );
+                console.log(err);
 
             }
 
         }
+
+        pendingCandidates = [];
+
+        /* =================
+           CREATE ANSWER
+        ================= */
+
+        const answer =
+
+        await peerConnection
+        .createAnswer();
+
+        await peerConnection
+        .setLocalDescription(
+            answer
+        );
+
+        /* =================
+           SEND ANSWER
+        ================= */
+
+        socket.send(
+
+            JSON.stringify({
+
+                type:
+                "webrtc-answer",
+
+                answer:
+                peerConnection.localDescription
+
+            })
+
+        );
+
+        createSystemMessage(
+            "WebRTC connected"
+        );
+
+    }catch(err){
+
+        console.log(
+            "Offer Error",
+            err
+        );
+
+    }
+
+}
 
         /* =====================
            ICE

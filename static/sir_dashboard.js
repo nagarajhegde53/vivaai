@@ -568,69 +568,123 @@ if(
         /* =====================
            WEBRTC ANSWER
         ===================== */
+           
+            /* =====================
+   WEBRTC OFFER
+===================== */
+
+if(
+    msg.type ===
+    "webrtc-offer"
+){
+
+    try{
+
+        /* =================
+           CREATE PEER
+        ================= */
+
+        if(!peerConnection){
+
+            createPeerConnection();
+
+        }
+
+        /* =================
+           SET REMOTE
+        ================= */
 
         if(
-            msg.type ===
-            "webrtc-answer"
+            !peerConnection.remoteDescription
+        ){
+
+            await peerConnection
+            .setRemoteDescription(
+
+                new RTCSessionDescription(
+                    msg.offer
+                )
+
+            );
+
+        }
+
+        /* =================
+           CREATE ANSWER
+        ================= */
+
+        const answer =
+
+        await peerConnection
+        .createAnswer();
+
+        await peerConnection
+        .setLocalDescription(
+            answer
+        );
+
+        /* =================
+           SEND ANSWER
+        ================= */
+
+        socket.send(
+
+            JSON.stringify({
+
+                type:
+                "webrtc-answer",
+
+                answer:
+                peerConnection.localDescription
+
+            })
+
+        );
+
+        /* =================
+           APPLY ICE
+        ================= */
+
+        for(
+            const candidate
+            of pendingCandidates
         ){
 
             try{
 
-                if(
-                    peerConnection &&
-                    !peerConnection.currentRemoteDescription
-                ){
+                await peerConnection
+                .addIceCandidate(
 
-                    await peerConnection
-                    .setRemoteDescription(
+                    new RTCIceCandidate(
+                        candidate
+                    )
 
-                        new RTCSessionDescription(
-                            msg.answer
-                        )
-
-                    );
-
-                }
-
-                // APPLY PENDING ICE
-
-                for(
-                    const candidate
-                    of pendingCandidates
-                ){
-
-                    try{
-
-                        await peerConnection
-                        .addIceCandidate(
-
-                            new RTCIceCandidate(
-                                candidate
-                            )
-
-                        );
-
-                    }catch(err){
-
-                        console.log(err);
-
-                    }
-
-                }
-
-                pendingCandidates = [];
+                );
 
             }catch(err){
 
-                console.log(
-                    "Answer Error",
-                    err
-                );
+                console.log(err);
 
             }
 
         }
 
+        pendingCandidates = [];
+
+        createSystemMessage(
+            "Student video connected"
+        );
+
+    }catch(err){
+
+        console.log(
+            "Offer Error",
+            err
+        );
+
+    }
+
+}
         /* =====================
            ICE
         ===================== */
@@ -897,6 +951,10 @@ function createPeerConnection(){
    CONNECT VOICE
 ========================= */
 
+/* =========================
+   CONNECT VOICE
+========================= */
+
 voiceChatBtn.onclick =
 async () => {
 
@@ -915,11 +973,19 @@ async () => {
 
         }
 
-        if(peerConnection){
+        /* =====================
+           CREATE PEER ONLY ONCE
+        ===================== */
 
-            stopVoice();
+        if(!peerConnection){
+
+            createPeerConnection();
 
         }
+
+        /* =====================
+           REQUEST STUDENT MIC
+        ===================== */
 
         socket.send(
 
@@ -932,27 +998,14 @@ async () => {
 
         );
 
+        /* =====================
+           SIR AUDIO ONLY
+        ===================== */
+
         localStream =
         await navigator
         .mediaDevices
         .getUserMedia({
-
-            video:{
-
-                width:{
-                    ideal:640
-                },
-
-                height:{
-                    ideal:360
-                },
-
-                frameRate:{
-                    ideal:15,
-                    max:18
-                }
-
-            },
 
             audio:{
 
@@ -970,51 +1023,34 @@ async () => {
 
         });
 
-        createPeerConnection();
+        /* =====================
+           ADD AUDIO TRACK ONLY
+        ===================== */
 
         localStream
-        .getTracks()
+        .getAudioTracks()
         .forEach(track => {
 
-            peerConnection
-            .addTrack(
+            peerConnection.addTrack(
                 track,
                 localStream
             );
 
         });
 
-        const offer =
-        await peerConnection
-        .createOffer({
+        /* =====================
+           SPEAKING DEFAULT OFF
+        ===================== */
 
-            offerToReceiveAudio:true,
+        localStream
+        .getAudioTracks()
+        .forEach(track => {
 
-            offerToReceiveVideo:true
+            track.enabled = false;
 
         });
 
-        await peerConnection
-        .setLocalDescription(
-            offer
-        );
-
-        socket.send(
-
-            JSON.stringify({
-
-                type:
-                "webrtc-offer",
-
-                offer:
-                peerConnection.localDescription
-
-            })
-
-        );
-
-        webrtcStarted =
-        true;
+        webrtcStarted = true;
 
         createSystemMessage(
             "Voice connected"
@@ -1030,7 +1066,6 @@ async () => {
     }
 
 };
-
 
 /* =========================
    START / STOP TALKING
@@ -1534,9 +1569,7 @@ function updateAIAnalysis(data){
         confidenceBar.style.width =
 
         (
-            data.score ||
-
-            data.confidence ||
+data.confidence ||
 
             0
 
@@ -1566,8 +1599,6 @@ function updateAIAnalysis(data){
         understandingBar.style.width =
 
         (
-            data.critical ||
-
             data.understanding ||
 
             0
