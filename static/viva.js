@@ -191,6 +191,11 @@ async () => {
     main.style.display =
     "flex";
 
+
+      document
+    .querySelector(".controls")
+    .classList.add("show");
+
     connectSocket();
 
     await startMedia();
@@ -887,20 +892,25 @@ function createPeerConnection(){
 /* =========================
    LOAD FACE MODELS
 ========================= */
+/* =========================
+   LOAD FACE MODELS
+========================= */
+
+let faceModelsLoaded = false;
 
 async function loadFaceModels(){
 
-    if(typeof faceapi === "undefined"){
-
-        console.log(
-            "FACE API NOT LOADED"
-        );
-
-        return;
-
-    }
-
     try{
+
+        if(typeof faceapi === "undefined"){
+
+            console.log(
+                "FACE API NOT LOADED"
+            );
+
+            return false;
+
+        }
 
         await faceapi.nets
         .tinyFaceDetector
@@ -914,9 +924,13 @@ async function loadFaceModels(){
             "/static/models"
         );
 
+        faceModelsLoaded = true;
+
         console.log(
             "Face models loaded"
         );
+
+        return true;
 
     }catch(err){
 
@@ -924,6 +938,8 @@ async function loadFaceModels(){
             "FACE MODEL ERROR:",
             err
         );
+
+        return false;
 
     }
 
@@ -933,7 +949,14 @@ async function loadFaceModels(){
 /* =========================
    FACE DETECTION
 ========================= */
+const loaded =
+await loadFaceModels();
 
+if(!loaded){
+
+    return;
+
+}
 async function startFaceDetection(){
 
     await loadFaceModels();
@@ -959,7 +982,11 @@ async function startFaceDetection(){
                 return;
 
             }
+if(!faceModelsLoaded){
 
+    return;
+
+}
             const detection =
 
             await faceapi
