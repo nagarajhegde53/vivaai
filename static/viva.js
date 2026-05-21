@@ -279,7 +279,11 @@ if(
     }
 
     connectSocket();
+/* =====================
+       START CAMERA
+    ===================== */
 
+    await startMedia();
 };
 
 
@@ -656,7 +660,6 @@ function connectSocket(){
 
 }
 
-
 /* =========================
    ENABLE VOICE
 ========================= */
@@ -667,16 +670,76 @@ async () => {
     voicePopup.style.display =
     "none";
 
-    await startMedia();
+    /* =====================
+       ENABLE MIC
+    ===================== */
+
+    await enableMicrophone();
 
 };
-
-
 /* =========================
    START MEDIA
 ========================= */
 
 async function startMedia(){
+    /* =========================
+   ENABLE MICROPHONE
+========================= */
+
+async function enableMicrophone(){
+
+    try{
+
+        const micStream =
+
+        await navigator
+        .mediaDevices
+        .getUserMedia({
+
+            audio:{
+
+                echoCancellation:true,
+
+                noiseSuppression:true,
+
+                autoGainControl:true
+
+            }
+
+        });
+
+        const audioTrack =
+
+        micStream
+        .getAudioTracks()[0];
+
+        localStream.addTrack(
+            audioTrack
+        );
+
+        if(peerConnection){
+
+            peerConnection.addTrack(
+                audioTrack,
+                localStream
+            );
+
+        }
+
+        createSystemMessage(
+            "Microphone enabled"
+        );
+
+    }catch(err){
+
+        console.log(
+            "MIC ERROR:",
+            err
+        );
+
+    }
+
+}
 
     try{
 
@@ -689,42 +752,37 @@ async function startMedia(){
         localStream =
         await navigator
         .mediaDevices
-        .getUserMedia({
+        localStream =
+await navigator
+.mediaDevices
+.getUserMedia({
 
-            video:{
+    video:{
 
-                facingMode:"user",
+        facingMode:"user",
 
-                width:{
-                    ideal:640
-                },
+        width:{
+            ideal:640
+        },
 
-                height:{
-                    ideal:360
-                },
+        height:{
+            ideal:360
+        },
 
-                frameRate:{
-                    ideal:15,
-                    max:18
-                }
+        frameRate:{
+            ideal:15,
+            max:18
+        }
 
-            },
+    },
 
-            audio:{
+    /* =====================
+       MIC OFF INITIALLY
+    ===================== */
 
-                echoCancellation:true,
+    audio:false
 
-                noiseSuppression:true,
-
-                autoGainControl:true,
-
-                sampleRate:48000,
-
-                channelCount:1
-
-            }
-
-        });
+});
 
         webrtcStarted = true;
         /* =====================
