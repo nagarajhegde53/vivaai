@@ -820,26 +820,25 @@ You are a supportive university viva evaluator.
 
 Evaluate the student fairly and realistically.
 
+The evaluation MUST depend on the actual student answers.
+
 Do NOT be overly strict.
 
 Even partially correct answers should receive moderate scores.
 
-Scoring Rules:
+FINAL SCORE must be between 1 and 10 only.
 
-Excellent:
-85-100
+Scoring Guide:
 
-Good:
-70-84
+9-10 = excellent
 
-Average:
-50-69
+7-8 = good
 
-Weak:
-30-49
+5-6 = average
 
-Very poor:
-0-29
+3-4 = weak
+
+1-2 = poor
 
 Return ONLY valid JSON.
 
@@ -850,7 +849,7 @@ NO extra text.
 FORMAT:
 
 {{
-    "score": 0,
+    "score": 1,
     "communication": 0,
     "critical": 0,
     "problem_solving": 0,
@@ -859,6 +858,19 @@ FORMAT:
     "strong_topics": [],
     "suggestions": ""
 }}
+
+IMPORTANT:
+
+- communication,
+critical,
+problem_solving,
+creativity
+must be between 0 and 100.
+
+- weak_topics and strong_topics
+must contain meaningful topic names.
+
+- suggestions should help the student improve.
 
 VIVA CONTENT:
 
@@ -872,7 +884,7 @@ VIVA CONTENT:
 
     result = {
 
-        "score": 60,
+        "score": 6,
 
         "communication": 65,
 
@@ -882,12 +894,16 @@ VIVA CONTENT:
 
         "creativity": 60,
 
-        "weak_topics": ["General"],
+        "weak_topics": [
+            "General Understanding"
+        ],
 
-        "strong_topics": ["Basic Understanding"],
+        "strong_topics": [
+            "Basic Communication"
+        ],
 
         "suggestions":
-        "Try improving explanation clarity"
+        "Try improving technical explanation clarity."
 
     }
 
@@ -929,7 +945,7 @@ Never return markdown.
 
             temperature=0.3,
 
-            max_tokens=500
+            max_tokens=700
 
         )
 
@@ -993,22 +1009,32 @@ Never return markdown.
         parsed = json.loads(text)
 
         # =================
-        # SAFE NUMBERS
+        # SAFE SCORE
         # =================
 
         parsed["score"] = max(
-            0,
+            1,
             min(
-                100,
-                int(parsed.get("score", 60))
+                10,
+                int(parsed.get(
+                    "score",
+                    6
+                ))
             )
         )
+
+        # =================
+        # SAFE METRICS
+        # =================
 
         parsed["communication"] = max(
             0,
             min(
                 100,
-                int(parsed.get("communication", 65))
+                int(parsed.get(
+                    "communication",
+                    65
+                ))
             )
         )
 
@@ -1016,7 +1042,10 @@ Never return markdown.
             0,
             min(
                 100,
-                int(parsed.get("critical", 60))
+                int(parsed.get(
+                    "critical",
+                    60
+                ))
             )
         )
 
@@ -1024,7 +1053,10 @@ Never return markdown.
             0,
             min(
                 100,
-                int(parsed.get("problem_solving", 60))
+                int(parsed.get(
+                    "problem_solving",
+                    60
+                ))
             )
         )
 
@@ -1032,7 +1064,10 @@ Never return markdown.
             0,
             min(
                 100,
-                int(parsed.get("creativity", 60))
+                int(parsed.get(
+                    "creativity",
+                    60
+                ))
             )
         )
 
@@ -1041,21 +1076,25 @@ Never return markdown.
         # =================
 
         if not isinstance(
-            parsed.get("weak_topics"),
+            parsed.get(
+                "weak_topics"
+            ),
             list
         ):
 
             parsed["weak_topics"] = [
-                "General"
+                "General Understanding"
             ]
 
         if not isinstance(
-            parsed.get("strong_topics"),
+            parsed.get(
+                "strong_topics"
+            ),
             list
         ):
 
             parsed["strong_topics"] = [
-                "Basic Understanding"
+                "Basic Communication"
             ]
 
         # =================
@@ -1063,12 +1102,14 @@ Never return markdown.
         # =================
 
         if not isinstance(
-            parsed.get("suggestions"),
+            parsed.get(
+                "suggestions"
+            ),
             str
         ):
 
             parsed["suggestions"] = \
-            "Keep practicing viva communication"
+            "Practice explaining answers more clearly."
 
         # =================
         # MERGE
@@ -1145,6 +1186,10 @@ Never return markdown.
     conn.commit()
 
     conn.close()
+
+    # =====================
+    # RESPONSE
+    # =====================
 
     return {
 
