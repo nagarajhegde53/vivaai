@@ -1,10 +1,8 @@
 /* =========================================================
    FINAL ADVANCED sir_dashboard.js
-   FULLY COMPATIBLE WITH:
-   - YOUR HTML
-   - YOUR CSS
-   - YOUR BACKEND
-   - FINAL viva.js
+   FULLY BUG FIXED
+   NO BASIC VERSION
+   FULLY COMPATIBLE WITH FINAL viva.js
 ========================================================= */
 
 
@@ -173,6 +171,8 @@ let currentStudents = [];
 
 let voiceConnected = false;
 
+let alreadyConnected = false;
+
 
 /* =========================
    RTC CONFIG
@@ -239,6 +239,12 @@ async function loadStudents(){
 ========================= */
 
 function renderStudents(){
+
+    if(!studentList){
+
+        return;
+
+    }
 
     studentList.innerHTML =
     "";
@@ -355,9 +361,15 @@ function connectSocket(){
             true
         );
 
-        createSystemMessage(
-            "Connected"
-        );
+        if(!alreadyConnected){
+
+            createSystemMessage(
+                "Connected"
+            );
+
+            alreadyConnected = true;
+
+        }
 
     };
 
@@ -396,7 +408,10 @@ function connectSocket(){
             event.data
         );
 
-        console.log(msg);
+        console.log(
+            "SOCKET MSG:",
+            msg
+        );
 
         /* =====================
            QUESTION
@@ -428,7 +443,9 @@ function connectSocket(){
 
         if(
             msg.type ===
-            "answer"
+            "answer" ||
+            msg.type ===
+            "student-answer"
         ){
 
             addTranscript(
@@ -466,7 +483,37 @@ function connectSocket(){
         }
 
         /* =====================
-           CAMERA ACTIVE
+           LIVE ANALYSIS
+        ===================== */
+
+        if(
+            msg.type ===
+            "live-analysis"
+        ){
+
+            updateAIAnalysis(
+                msg.analysis
+            );
+
+        }
+
+        /* =====================
+           MONITOR
+        ===================== */
+
+        if(
+            msg.type ===
+            "cheating-alert"
+        ){
+
+            addMonitoringMessage(
+                msg.text
+            );
+
+        }
+
+        /* =====================
+           STUDENT CAMERA
         ===================== */
 
         if(
@@ -481,7 +528,7 @@ function connectSocket(){
         }
 
         /* =====================
-           OFFER
+           WEBRTC OFFER
         ===================== */
 
         if(
@@ -618,36 +665,6 @@ function connectSocket(){
         }
 
         /* =====================
-           LIVE ANALYSIS
-        ===================== */
-
-        if(
-            msg.type ===
-            "live-analysis"
-        ){
-
-            updateAIAnalysis(
-                msg.analysis
-            );
-
-        }
-
-        /* =====================
-           CHEATING ALERT
-        ===================== */
-
-        if(
-            msg.type ===
-            "cheating-alert"
-        ){
-
-            addMonitoringMessage(
-                msg.text
-            );
-
-        }
-
-        /* =====================
            SPEAKING
         ===================== */
 
@@ -656,8 +673,12 @@ function connectSocket(){
             "sir-speaking"
         ){
 
-            waveContainer.style.opacity =
-            "1";
+            if(waveContainer){
+
+                waveContainer.style.opacity =
+                "1";
+
+            }
 
         }
 
@@ -666,8 +687,12 @@ function connectSocket(){
             "sir-stopped-speaking"
         ){
 
-            waveContainer.style.opacity =
-            "0.3";
+            if(waveContainer){
+
+                waveContainer.style.opacity =
+                "0.3";
+
+            }
 
         }
 
@@ -677,7 +702,7 @@ function connectSocket(){
 
 
 /* =========================
-   PEER
+   PEER CONNECTION
 ========================= */
 
 function createPeerConnection(){
@@ -687,11 +712,34 @@ function createPeerConnection(){
         rtcConfig
     );
 
+    /* =====================
+       IMPORTANT
+    ===================== */
+
+    peerConnection.addTransceiver(
+        "video",
+        {
+            direction:"recvonly"
+        }
+    );
+
+    peerConnection.addTransceiver(
+        "audio",
+        {
+            direction:"recvonly"
+        }
+    );
+
     peerConnection.ontrack =
     async (event) => {
 
         const remoteStream =
         event.streams[0];
+
+        console.log(
+            "TRACK:",
+            event.track.kind
+        );
 
         /* =====================
            VIDEO
@@ -717,6 +765,10 @@ function createPeerConnection(){
             try{
 
                 await liveVideo.play();
+
+                console.log(
+                    "VIDEO PLAYING"
+                );
 
             }catch(err){
 
@@ -750,6 +802,10 @@ function createPeerConnection(){
             try{
 
                 await remoteAudio.play();
+
+                console.log(
+                    "AUDIO PLAYING"
+                );
 
             }catch(err){
 
@@ -792,7 +848,7 @@ function createPeerConnection(){
 
 
 /* =========================
-   CONNECT VOICE
+   VOICE CONNECT
 ========================= */
 
 voiceChatBtn.onclick =
@@ -830,11 +886,39 @@ async () => {
 
         localStream
         .getAudioTracks()
-        .forEach(track => {
+        .forEach(async track => {
 
             peerConnection.addTrack(
                 track,
                 localStream
+            );
+
+            /* =====================
+               RENEGOTIATE
+            ===================== */
+
+            const offer =
+
+            await peerConnection
+            .createOffer();
+
+            await peerConnection
+            .setLocalDescription(
+                offer
+            );
+
+            socket.send(
+
+                JSON.stringify({
+
+                    type:
+                    "webrtc-offer",
+
+                    offer:
+                    peerConnection.localDescription
+
+                })
+
             );
 
         });
@@ -855,7 +939,7 @@ async () => {
 
 
 /* =========================
-   TOGGLE TALKING
+   TOGGLE TALK
 ========================= */
 
 toggleVoiceBtn.onclick = () => {
@@ -876,24 +960,6 @@ toggleVoiceBtn.onclick = () => {
         speaking;
 
     });
-
-    toggleVoiceBtn.innerHTML =
-
-    speaking
-
-    ?
-
-    `
-    <i class="fa-solid fa-microphone"></i>
-    Stop Talking
-    `
-
-    :
-
-    `
-    <i class="fa-solid fa-microphone"></i>
-    Start Talking
-    `;
 
 };
 
@@ -920,24 +986,6 @@ muteBtn.onclick = () => {
         !micMuted;
 
     });
-
-    muteBtn.innerHTML =
-
-    micMuted
-
-    ?
-
-    `
-    <i class="fa-solid fa-microphone"></i>
-    Unmute
-    `
-
-    :
-
-    `
-    <i class="fa-solid fa-microphone-slash"></i>
-    Mute
-    `;
 
 };
 
@@ -982,10 +1030,6 @@ function stopVoice(){
         );
 
     }
-
-    createSystemMessage(
-        "Voice Ended"
-    );
 
 }
 
@@ -1241,22 +1285,6 @@ if(sendBtn){
 }
 
 
-chatInput.addEventListener(
-    "keypress",
-    (e) => {
-
-        if(
-            e.key === "Enter"
-        ){
-
-            sendChat();
-
-        }
-
-    }
-);
-
-
 /* =========================
    AI ANALYSIS
 ========================= */
@@ -1296,6 +1324,19 @@ function updateAIAnalysis(data){
 
 function addMonitoringMessage(text){
 
+    /* =====================
+       NO DUPLICATES
+    ===================== */
+
+    if(
+        monitorHistory.length > 0 &&
+        monitorHistory[0].text === text
+    ){
+
+        return;
+
+    }
+
     monitorHistory.unshift({
 
         text:text,
@@ -1305,11 +1346,16 @@ function addMonitoringMessage(text){
 
     });
 
+    /* =====================
+       KEEP ONLY 10
+    ===================== */
+
     if(
         monitorHistory.length > 10
     ){
 
-        monitorHistory.pop();
+        monitorHistory =
+        monitorHistory.slice(0,10);
 
     }
 
@@ -1379,6 +1425,7 @@ function addTranscript(role,text){
         );
 
         div.className =
+
         item.role === "Student"
 
         ?
@@ -1409,7 +1456,7 @@ function addTranscript(role,text){
 
 
 /* =========================
-   CHAT BUBBLE
+   CHAT
 ========================= */
 
 function createBubble(text,type){
@@ -1502,16 +1549,20 @@ function updateConnectionStatus(connected){
    LOGOUT
 ========================= */
 
-logoutBtn.onclick = () => {
+if(logoutBtn){
 
-    localStorage.removeItem(
-        "sir"
-    );
+    logoutBtn.onclick = () => {
 
-    window.location.href =
-    "/";
+        localStorage.removeItem(
+            "sir"
+        );
 
-};
+        window.location.href =
+        "/";
+
+    };
+
+}
 
 
 /* =========================

@@ -1,10 +1,12 @@
 /* =========================================================
    FINAL ADVANCED viva.js
-   FULLY COMPATIBLE WITH:
+   FULLY FIXED VERSION
+   NO BASIC VERSION
+   COMPATIBLE WITH:
    - YOUR HTML
    - YOUR CSS
    - YOUR BACKEND
-   - YOUR sir_dashboard.js
+   - FINAL sir_dashboard.js
 ========================================================= */
 
 
@@ -97,11 +99,6 @@ document.querySelector(
     ".socket-status"
 );
 
-const statusDot =
-document.querySelector(
-    ".status-dot"
-);
-
 
 /* =========================
    USER
@@ -157,6 +154,8 @@ let monitorInterval = null;
 
 let faceModelsLoaded = false;
 
+let alreadyConnected = false;
+
 
 /* =========================
    RTC CONFIG
@@ -200,9 +199,11 @@ async () => {
         controls.classList.add(
             "show"
         );
-await connectSocket();
 
-await startCamera();
+        await connectSocket();
+
+        await startCamera();
+
     }catch(err){
 
         console.log(err);
@@ -215,6 +216,7 @@ await startCamera();
 /* =========================
    SOCKET
 ========================= */
+
 async function connectSocket(){
 
     return new Promise((resolve,reject) => {
@@ -247,9 +249,15 @@ async function connectSocket(){
                 true
             );
 
-            createSystemMessage(
-                "Connected"
-            );
+            if(!alreadyConnected){
+
+                createSystemMessage(
+                    "Connected"
+                );
+
+                alreadyConnected = true;
+
+            }
 
             console.log(
                 "Connected"
@@ -354,7 +362,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               ANSWER
+               WEBRTC ANSWER
             ===================== */
 
             if(
@@ -443,7 +451,7 @@ async function connectSocket(){
 
 
 /* =========================
-   CAMERA START
+   START CAMERA
 ========================= */
 
 async function startCamera(){
@@ -495,30 +503,37 @@ async function startCamera(){
             offer
         );
 
-        socket.send(
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
 
-            JSON.stringify({
+            socket.send(
 
-                type:
-                "webrtc-offer",
+                JSON.stringify({
 
-                offer:
-                peerConnection.localDescription
+                    type:
+                    "webrtc-offer",
 
-            })
+                    offer:
+                    peerConnection.localDescription
 
-        );
+                })
 
-        socket.send(
+            );
 
-            JSON.stringify({
+            socket.send(
 
-                type:
-                "student-camera-on"
+                JSON.stringify({
 
-            })
+                    type:
+                    "student-camera-on"
 
-        );
+                })
+
+            );
+
+        }
 
         startMonitoring();
 
@@ -940,24 +955,38 @@ if(
 
         );
 
-        socket.send(
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
 
-            JSON.stringify({
+            socket.send(
 
-                type:
-                "answer",
+                JSON.stringify({
 
-                text:text
+                    type:
+                    "answer",
 
-            })
+                    text:text
 
-        );
+                })
+
+            );
+
+        }
 
         /* =====================
-           LIVE AI
+           LIVE AI ANALYSIS
         ===================== */
 
         try{
+
+            if(!tempQuestion){
+
+                tempQuestion =
+                "Unknown Question";
+
+            }
 
             const res =
             await fetch(
@@ -989,21 +1018,36 @@ if(
             const data =
             await res.json();
 
-            if(data.success){
+            console.log(
+                "LIVE AI:",
+                data
+            );
 
-                socket.send(
+            if(
+                data.success &&
+                data.analysis
+            ){
 
-                    JSON.stringify({
+                if(
+                    socket &&
+                    socket.readyState === 1
+                ){
 
-                        type:
-                        "live-analysis",
+                    socket.send(
 
-                        analysis:
-                        data.analysis
+                        JSON.stringify({
 
-                    })
+                            type:
+                            "live-analysis",
 
-                );
+                            analysis:
+                            data.analysis
+
+                        })
+
+                    );
+
+                }
 
             }
 
@@ -1261,7 +1305,7 @@ function createBubble(text,type){
 
 
 /* =========================
-   SYSTEM
+   SYSTEM MESSAGE
 ========================= */
 
 function createSystemMessage(text){
