@@ -1,8 +1,10 @@
 /* =========================================================
-   ADVANCED VIVA.JS
-   FULLY FIXED
-   Compatible with YOUR REAL HTML + sir_dashboard.js
-   NO BASIC VERSION
+   FINAL ADVANCED viva.js
+   FULLY COMPATIBLE WITH:
+   - YOUR HTML
+   - YOUR CSS
+   - YOUR BACKEND
+   - YOUR sir_dashboard.js
 ========================================================= */
 
 
@@ -85,6 +87,21 @@ document.getElementById(
     "enableVoiceBtn"
 );
 
+const controls =
+document.querySelector(
+    ".controls"
+);
+
+const socketStatus =
+document.querySelector(
+    ".socket-status"
+);
+
+const statusDot =
+document.querySelector(
+    ".status-dot"
+);
+
 
 /* =========================
    USER
@@ -130,19 +147,15 @@ let tempQuestion = "";
 
 let tempAnswer = "";
 
-let currentBubbleQ = null;
-
-let currentBubbleA = null;
-
 let muted = false;
+
+let micEnabled = false;
 
 let faceDetectionInterval = null;
 
 let monitorInterval = null;
 
 let faceModelsLoaded = false;
-
-let micEnabled = false;
 
 
 /* =========================
@@ -170,7 +183,7 @@ const rtcConfig = {
 
 
 /* =========================
-   START
+   START VIVA
 ========================= */
 
 startBtn.onclick =
@@ -183,6 +196,10 @@ async () => {
 
         main.style.display =
         "flex";
+
+        controls.classList.add(
+            "show"
+        );
 
         connectSocket();
 
@@ -227,6 +244,10 @@ function connectSocket(){
 
         reconnecting = false;
 
+        updateSocketStatus(
+            true
+        );
+
         createSystemMessage(
             "Connected"
         );
@@ -239,8 +260,8 @@ function connectSocket(){
 
     socket.onclose = () => {
 
-        console.log(
-            "Disconnected"
+        updateSocketStatus(
+            false
         );
 
         if(!reconnecting){
@@ -286,7 +307,6 @@ function connectSocket(){
             tempQuestion =
             msg.text;
 
-            currentBubbleQ =
             createBubble(
 
                 `Professor: ${msg.text}`,
@@ -317,7 +337,7 @@ function connectSocket(){
         }
 
         /* =====================
-           VOICE REQUEST
+           MIC REQUEST
         ===================== */
 
         if(
@@ -331,7 +351,7 @@ function connectSocket(){
         }
 
         /* =====================
-           WEBRTC ANSWER
+           ANSWER
         ===================== */
 
         if(
@@ -418,7 +438,7 @@ function connectSocket(){
 
 
 /* =========================
-   START CAMERA
+   CAMERA START
 ========================= */
 
 async function startCamera(){
@@ -495,18 +515,16 @@ async function startCamera(){
 
         );
 
-        studentVideo.onloadedmetadata =
-        () => {
+        startMonitoring();
 
-            startMonitoring();
-
-            startFaceDetection();
-
-        };
+        startFaceDetection();
 
     }catch(err){
 
         console.log(err);
+
+        errorBox.innerText =
+        "Camera access denied";
 
     }
 
@@ -791,7 +809,7 @@ async function startFaceDetection(){
         }catch(err){
 
             console.log(
-                "FACE DETECTION ERROR:",
+                "FACE ERROR:",
                 err
             );
 
@@ -909,7 +927,6 @@ if(
         tempAnswer =
         text;
 
-        currentBubbleA =
         createBubble(
 
             text,
@@ -932,7 +949,7 @@ if(
         );
 
         /* =====================
-           LIVE ANALYSIS
+           LIVE AI
         ===================== */
 
         try{
@@ -1006,6 +1023,10 @@ recordBtn.onclick = () => {
 
         recognition.start();
 
+        createSystemMessage(
+            "Recording..."
+        );
+
     }
 
 };
@@ -1020,6 +1041,10 @@ stopBtn.onclick = () => {
     if(recognition){
 
         recognition.stop();
+
+        createSystemMessage(
+            "Recording stopped"
+        );
 
     }
 
@@ -1204,7 +1229,7 @@ muteBtn.onclick = () => {
 
 
 /* =========================
-   CHAT BUBBLES
+   CHAT
 ========================= */
 
 function createBubble(text,type){
@@ -1227,13 +1252,11 @@ function createBubble(text,type){
     chatBox.scrollTop =
     chatBox.scrollHeight;
 
-    return div;
-
 }
 
 
 /* =========================
-   SYSTEM MESSAGE
+   SYSTEM
 ========================= */
 
 function createSystemMessage(text){
@@ -1255,6 +1278,43 @@ function createSystemMessage(text){
 
     chatBox.scrollTop =
     chatBox.scrollHeight;
+
+}
+
+
+/* =========================
+   SOCKET STATUS
+========================= */
+
+function updateSocketStatus(connected){
+
+    if(!socketStatus){
+
+        return;
+
+    }
+
+    socketStatus.innerHTML =
+
+    connected
+
+    ?
+
+    `
+    <span class="status-dot"></span>
+    Connected
+    `
+
+    :
+
+    `
+    <span
+    class="status-dot"
+    style="background:red;">
+    </span>
+
+    Disconnected
+    `;
 
 }
 

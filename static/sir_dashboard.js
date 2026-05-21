@@ -1,8 +1,10 @@
 /* =========================================================
-   ADVANCED SIR_DASHBOARD.JS
-   FULLY FIXED
-   Compatible with FINAL viva.js
-   NO BASIC VERSION
+   FINAL ADVANCED sir_dashboard.js
+   FULLY COMPATIBLE WITH:
+   - YOUR HTML
+   - YOUR CSS
+   - YOUR BACKEND
+   - FINAL viva.js
 ========================================================= */
 
 
@@ -30,9 +32,9 @@ document.querySelector(
     ".chat-box"
 );
 
-const questionInput =
+const chatInput =
 document.getElementById(
-    "questionInput"
+    "chatInput"
 );
 
 const sendBtn =
@@ -40,9 +42,24 @@ document.getElementById(
     "sendBtn"
 );
 
+const questionInput =
+document.getElementById(
+    "questionInput"
+);
+
 const voiceChatBtn =
 document.getElementById(
     "voiceChatBtn"
+);
+
+const toggleVoiceBtn =
+document.getElementById(
+    "toggleVoiceBtn"
+);
+
+const muteBtn =
+document.getElementById(
+    "muteBtn"
 );
 
 const endVoiceBtn =
@@ -50,9 +67,9 @@ document.getElementById(
     "endVoiceBtn"
 );
 
-const muteVoiceBtn =
+const voiceQuestionBtn =
 document.getElementById(
-    "muteVoiceBtn"
+    "voiceQuestionBtn"
 );
 
 const confidenceBar =
@@ -76,18 +93,23 @@ document.querySelector(
 );
 
 const transcriptBox =
-document.getElementById(
-    "transcriptBox"
-);
-
-const speakingIndicator =
-document.getElementById(
-    "speakingIndicator"
+document.querySelector(
+    ".transcript-box"
 );
 
 const connectionLabel =
+document.querySelector(
+    ".connection"
+);
+
+const logoutBtn =
 document.getElementById(
-    "connectionLabel"
+    "logoutBtn"
+);
+
+const waveContainer =
+document.querySelector(
+    ".wave-container"
 );
 
 
@@ -131,21 +153,25 @@ let reconnecting = false;
 
 let reconnectTimeout = null;
 
-let transcriptHistory = [];
-
 let monitorHistory = [];
+
+let transcriptHistory = [];
 
 let micMuted = false;
 
-let analyser = null;
+let recognition = null;
+
+let speaking = false;
 
 let audioContext = null;
 
-let speaking = false;
+let analyser = null;
 
 let speakingInterval = null;
 
 let currentStudents = [];
+
+let voiceConnected = false;
 
 
 /* =========================
@@ -201,10 +227,7 @@ async function loadStudents(){
 
     }catch(err){
 
-        console.log(
-            "LOAD STUDENTS ERROR:",
-            err
-        );
+        console.log(err);
 
     }
 
@@ -217,12 +240,6 @@ async function loadStudents(){
 
 function renderStudents(){
 
-    if(!studentList){
-
-        return;
-
-    }
-
     studentList.innerHTML =
     "";
 
@@ -234,22 +251,23 @@ function renderStudents(){
         );
 
         card.className =
-        "student-card";
+        `student-card ${student.status || "waiting"}`;
 
         card.innerHTML = `
 
-            <h3>
-                ${student.username}
-            </h3>
+            <div class="student-info">
 
-            <p class="student-status">
+                <h3>
+                    ${student.username}
+                </h3>
 
-                ${student.status || "Waiting"}
+                <p>
+                    ${student.status || "Waiting"}
+                </p>
 
-            </p>
+            </div>
 
-            <button
-            class="join-btn">
+            <button class="join-btn">
 
                 Join Viva
 
@@ -287,6 +305,10 @@ function connectToStudent(roomId){
 
     selectedRoom =
     roomId;
+
+    createSystemMessage(
+        "Connecting..."
+    );
 
     connectSocket();
 
@@ -329,16 +351,12 @@ function connectSocket(){
 
         reconnecting = false;
 
+        updateConnectionStatus(
+            true
+        );
+
         createSystemMessage(
             "Connected"
-        );
-
-        updateConnectionStatus(
-            "Connected"
-        );
-
-        console.log(
-            "CONNECTED"
         );
 
     };
@@ -346,7 +364,7 @@ function connectSocket(){
     socket.onclose = () => {
 
         updateConnectionStatus(
-            "Disconnected"
+            false
         );
 
         if(!reconnecting){
@@ -398,7 +416,7 @@ function connectSocket(){
 
                 `Q: ${msg.text}`,
 
-                "question"
+                "ai"
 
             );
 
@@ -422,14 +440,33 @@ function connectSocket(){
 
                 `A: ${msg.text}`,
 
-                "answer"
+                "student"
 
             );
 
         }
 
         /* =====================
-           STUDENT CAMERA
+           CHAT
+        ===================== */
+
+        if(
+            msg.type ===
+            "chat"
+        ){
+
+            createBubble(
+
+                msg.text,
+
+                "ai"
+
+            );
+
+        }
+
+        /* =====================
+           CAMERA ACTIVE
         ===================== */
 
         if(
@@ -438,7 +475,7 @@ function connectSocket(){
         ){
 
             createSystemMessage(
-                "Student camera active"
+                "Student Camera Active"
             );
 
         }
@@ -531,10 +568,7 @@ function connectSocket(){
 
             }catch(err){
 
-                console.log(
-                    "OFFER ERROR:",
-                    err
-                );
+                console.log(err);
 
             }
 
@@ -622,12 +656,8 @@ function connectSocket(){
             "sir-speaking"
         ){
 
-            if(speakingIndicator){
-
-                speakingIndicator.innerText =
-                "Speaking";
-
-            }
+            waveContainer.style.opacity =
+            "1";
 
         }
 
@@ -636,12 +666,8 @@ function connectSocket(){
             "sir-stopped-speaking"
         ){
 
-            if(speakingIndicator){
-
-                speakingIndicator.innerText =
-                "Silent";
-
-            }
+            waveContainer.style.opacity =
+            "0.3";
 
         }
 
@@ -766,7 +792,7 @@ function createPeerConnection(){
 
 
 /* =========================
-   VOICE CONNECT
+   CONNECT VOICE
 ========================= */
 
 voiceChatBtn.onclick =
@@ -774,11 +800,13 @@ async () => {
 
     try{
 
-        if(!peerConnection){
+        if(voiceConnected){
 
-            createPeerConnection();
+            return;
 
         }
+
+        voiceConnected = true;
 
         socket.send(
 
@@ -811,11 +839,11 @@ async () => {
 
         });
 
-        startVoiceDetection();
-
         createSystemMessage(
-            "Voice Enabled"
+            "Voice Connected"
         );
+
+        startVoiceDetection();
 
     }catch(err){
 
@@ -824,6 +852,142 @@ async () => {
     }
 
 };
+
+
+/* =========================
+   TOGGLE TALKING
+========================= */
+
+toggleVoiceBtn.onclick = () => {
+
+    if(!localStream){
+
+        return;
+
+    }
+
+    speaking = !speaking;
+
+    localStream
+    .getAudioTracks()
+    .forEach(track => {
+
+        track.enabled =
+        speaking;
+
+    });
+
+    toggleVoiceBtn.innerHTML =
+
+    speaking
+
+    ?
+
+    `
+    <i class="fa-solid fa-microphone"></i>
+    Stop Talking
+    `
+
+    :
+
+    `
+    <i class="fa-solid fa-microphone"></i>
+    Start Talking
+    `;
+
+};
+
+
+/* =========================
+   MUTE
+========================= */
+
+muteBtn.onclick = () => {
+
+    if(!localStream){
+
+        return;
+
+    }
+
+    micMuted = !micMuted;
+
+    localStream
+    .getAudioTracks()
+    .forEach(track => {
+
+        track.enabled =
+        !micMuted;
+
+    });
+
+    muteBtn.innerHTML =
+
+    micMuted
+
+    ?
+
+    `
+    <i class="fa-solid fa-microphone"></i>
+    Unmute
+    `
+
+    :
+
+    `
+    <i class="fa-solid fa-microphone-slash"></i>
+    Mute
+    `;
+
+};
+
+
+/* =========================
+   END VOICE
+========================= */
+
+endVoiceBtn.onclick = () => {
+
+    stopVoice();
+
+};
+
+
+/* =========================
+   STOP VOICE
+========================= */
+
+function stopVoice(){
+
+    if(localStream){
+
+        localStream
+        .getTracks()
+        .forEach(track => {
+
+            track.stop();
+
+        });
+
+        localStream = null;
+
+    }
+
+    voiceConnected = false;
+
+    if(speakingInterval){
+
+        clearInterval(
+            speakingInterval
+        );
+
+    }
+
+    createSystemMessage(
+        "Voice Ended"
+    );
+
+}
 
 
 /* =========================
@@ -894,43 +1058,31 @@ function startVoiceDetection(){
 
             if(volume > 15){
 
-                if(!speaking){
+                socket.send(
 
-                    speaking = true;
+                    JSON.stringify({
 
-                    socket.send(
+                        type:
+                        "sir-speaking"
 
-                        JSON.stringify({
+                    })
 
-                            type:
-                            "sir-speaking"
-
-                        })
-
-                    );
-
-                }
+                );
 
             }
 
             else{
 
-                if(speaking){
+                socket.send(
 
-                    speaking = false;
+                    JSON.stringify({
 
-                    socket.send(
+                        type:
+                        "sir-stopped-speaking"
 
-                        JSON.stringify({
+                    })
 
-                            type:
-                            "sir-stopped-speaking"
-
-                        })
-
-                    );
-
-                }
+                );
 
             }
 
@@ -943,74 +1095,6 @@ function startVoiceDetection(){
     }
 
 }
-
-
-/* =========================
-   END VOICE
-========================= */
-
-endVoiceBtn.onclick = () => {
-
-    stopVoice();
-
-};
-
-
-/* =========================
-   STOP VOICE
-========================= */
-
-function stopVoice(){
-
-    if(localStream){
-
-        localStream
-        .getTracks()
-        .forEach(track => {
-
-            track.stop();
-
-        });
-
-        localStream = null;
-
-    }
-
-    if(speakingInterval){
-
-        clearInterval(
-            speakingInterval
-        );
-
-    }
-
-}
-
-
-/* =========================
-   MUTE
-========================= */
-
-muteVoiceBtn.onclick = () => {
-
-    if(!localStream){
-
-        return;
-
-    }
-
-    micMuted = !micMuted;
-
-    localStream
-    .getAudioTracks()
-    .forEach(track => {
-
-        track.enabled =
-        !micMuted;
-
-    });
-
-};
 
 
 /* =========================
@@ -1045,7 +1129,7 @@ function sendQuestion(){
 
         `Q: ${text}`,
 
-        "question"
+        "ai"
 
     );
 
@@ -1056,17 +1140,108 @@ function sendQuestion(){
 
 
 /* =========================
-   SEND EVENTS
+   VOICE QUESTION
 ========================= */
+
+if(
+    "webkitSpeechRecognition"
+    in window
+){
+
+    recognition =
+    new webkitSpeechRecognition();
+
+    recognition.continuous =
+    false;
+
+    recognition.lang =
+    "en-US";
+
+    recognition.interimResults =
+    false;
+
+    recognition.maxAlternatives =
+    1;
+
+    recognition.onresult =
+    (e) => {
+
+        const text =
+        e.results[0][0]
+        .transcript;
+
+        questionInput.value =
+        text;
+
+        sendQuestion();
+
+    };
+
+}
+
+
+voiceQuestionBtn.onclick = () => {
+
+    if(recognition){
+
+        recognition.start();
+
+    }
+
+};
+
+
+/* =========================
+   SEND CHAT
+========================= */
+
+function sendChat(){
+
+    const text =
+    chatInput.value.trim();
+
+    if(!text){
+
+        return;
+
+    }
+
+    socket.send(
+
+        JSON.stringify({
+
+            type:
+            "chat",
+
+            text:text
+
+        })
+
+    );
+
+    createBubble(
+
+        text,
+
+        "ai"
+
+    );
+
+    chatInput.value =
+    "";
+
+}
+
 
 if(sendBtn){
 
     sendBtn.onclick =
-    sendQuestion;
+    sendChat;
 
 }
 
-questionInput.addEventListener(
+
+chatInput.addEventListener(
     "keypress",
     (e) => {
 
@@ -1074,7 +1249,7 @@ questionInput.addEventListener(
             e.key === "Enter"
         ){
 
-            sendQuestion();
+            sendChat();
 
         }
 
@@ -1155,6 +1330,8 @@ function addMonitoringMessage(text){
 
             ⚠ ${item.text}
 
+            <br>
+
             <small>
                 ${item.time}
             </small>
@@ -1171,7 +1348,7 @@ function addMonitoringMessage(text){
 
 
 /* =========================
-   TRANSCRIPTS
+   TRANSCRIPT
 ========================= */
 
 function addTranscript(role,text){
@@ -1191,12 +1368,6 @@ function addTranscript(role,text){
 
     }
 
-    if(!transcriptBox){
-
-        return;
-
-    }
-
     transcriptBox.innerHTML =
     "";
 
@@ -1208,7 +1379,15 @@ function addTranscript(role,text){
         );
 
         div.className =
-        "transcript-item";
+        item.role === "Student"
+
+        ?
+
+        "message student-msg"
+
+        :
+
+        "message ai-msg";
 
         div.innerHTML = `
 
@@ -1230,7 +1409,7 @@ function addTranscript(role,text){
 
 
 /* =========================
-   CHAT
+   CHAT BUBBLE
 ========================= */
 
 function createBubble(text,type){
@@ -1241,7 +1420,16 @@ function createBubble(text,type){
     );
 
     div.className =
-    "bubble " + type;
+
+    type === "student"
+
+    ?
+
+    "chat-msg"
+
+    :
+
+    "chat-msg ai";
 
     div.innerText =
     text;
@@ -1257,7 +1445,7 @@ function createBubble(text,type){
 
 
 /* =========================
-   SYSTEM
+   SYSTEM MESSAGE
 ========================= */
 
 function createSystemMessage(text){
@@ -1268,7 +1456,7 @@ function createSystemMessage(text){
     );
 
     div.className =
-    "bubble system";
+    "chat-msg ai";
 
     div.innerText =
     text;
@@ -1284,19 +1472,46 @@ function createSystemMessage(text){
 
 
 /* =========================
-   STATUS
+   CONNECTION STATUS
 ========================= */
 
-function updateConnectionStatus(text){
+function updateConnectionStatus(connected){
 
-    if(connectionLabel){
+    if(!connectionLabel){
 
-        connectionLabel.innerText =
-        text;
+        return;
 
     }
 
+    connectionLabel.innerText =
+
+    connected
+
+    ?
+
+    "Connected"
+
+    :
+
+    "Disconnected";
+
 }
+
+
+/* =========================
+   LOGOUT
+========================= */
+
+logoutBtn.onclick = () => {
+
+    localStorage.removeItem(
+        "sir"
+    );
+
+    window.location.href =
+    "/";
+
+};
 
 
 /* =========================
