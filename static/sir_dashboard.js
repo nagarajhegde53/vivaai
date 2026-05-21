@@ -478,6 +478,16 @@ function connectSocket(){
             );
 
         }
+        if(
+    msg.type ===
+    "live-analysis"
+){
+
+    updateAIAnalysis(
+        msg.analysis
+    );
+
+}
 
         /* =====================
            CHAT
@@ -1476,5 +1486,29 @@ function createSystemMessage(text){
 
     chatBox.scrollTop =
     chatBox.scrollHeight;
+
+}
+
+
+// update ui
+function updateAIAnalysis(data){
+
+    document.getElementById(
+        "confidenceBar"
+    ).style.width =
+
+    data.confidence + "%";
+
+    document.getElementById(
+        "communicationBar"
+    ).style.width =
+
+    data.communication + "%";
+
+    document.getElementById(
+        "understandingBar"
+    ).style.width =
+
+    data.understanding + "%";
 
 }

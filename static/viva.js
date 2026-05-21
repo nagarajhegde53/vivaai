@@ -957,8 +957,52 @@ if(
             );
 
         }
+// api live analysis
+fetch("/api/live-analysis",{
 
+    method:"POST",
+
+    headers:{
+        "Content-Type":
+        "application/json"
+    },
+
+    body:JSON.stringify({
+
+        question:tempQuestion,
+
+        answer:transcript
+
+    })
+
+})
+.then(res => res.json())
+.then(data => {
+
+    if(
+        data.success &&
+        socket &&
+        socket.readyState === 1
+    ){
+
+        socket.send(
+
+            JSON.stringify({
+
+                type:"live-analysis",
+
+                analysis:
+                data.analysis
+
+            })
+
+        );
+
+    }
+
+});
     };
+    // end 
 
     recognition.onerror =
     (event) => {

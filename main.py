@@ -1093,6 +1093,85 @@ No extra text.
 
     }
 
+# live analysis 
+@app.post("/api/live-analysis")
+async def live_analysis(request: Request):
+
+    data = await request.json()
+
+    answer = data.get("answer","")
+
+    question = data.get("question","")
+
+    prompt = f"""
+
+Analyze this viva response.
+
+Question:
+{question}
+
+Answer:
+{answer}
+
+Return ONLY JSON:
+
+{{
+    "confidence":0,
+    "communication":0,
+    "understanding":0
+}}
+
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+
+            model="llama3-8b-8192",
+
+            messages=[
+
+                {
+                    "role":"user",
+                    "content":prompt
+                }
+
+            ]
+
+        )
+
+        text = (
+            res.choices[0]
+            .message.content
+        )
+
+        match = re.search(
+            r"\{[\s\S]*\}",
+            text
+        )
+
+        result = json.loads(
+            match.group(0)
+        )
+
+        return {
+
+            "success":True,
+
+            "analysis":result
+
+        }
+
+    except Exception as e:
+
+        print(e)
+
+        return {
+
+            "success":False
+
+        }
+
 # ------------------------------end 
 #get result
 @app.post("/api/get-result")
