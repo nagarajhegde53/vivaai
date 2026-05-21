@@ -120,8 +120,6 @@ let reconnectTimeout = null;
 
 let reconnecting = false;
 
-let heartbeat = null;
-
 let mode = null;
 
 let tempQuestion = "";
@@ -135,55 +133,11 @@ let currentBubbleA = null;
 let qaList = [];
 
 let muted = false;
-/* =========================
-   CHEATING DETECTION
-========================= */
 
-let lastAlert = 0;
+let faceDetectionInterval = null;
 
-function sendCheatingAlert(message){
+let cameraMonitorInterval = null;
 
-    const now = Date.now();
-
-    // PREVENT SPAM
-
-    if(
-        now - lastAlert < 5000
-    ){
-
-        return;
-
-    }
-
-    lastAlert = now;
-
-    console.log(
-        "CHEATING:",
-        message
-    );
-
-    if(
-        socket &&
-        socket.readyState === 1
-    ){
-
-        socket.send(
-
-            JSON.stringify({
-
-                type:
-                "cheating-alert",
-
-                text:
-                message
-
-            })
-
-        );
-
-    }
-
-}
 
 /* =========================
    WEBRTC
@@ -196,14 +150,6 @@ let peerConnection = null;
 let pendingCandidates = [];
 
 let webrtcStarted = false;
-
-/* =========================
-   FACE DETECTION
-========================= */
-
-let faceDetectionStarted = false;
-
-let faceInterval = null;
 
 
 /* =========================
@@ -236,54 +182,19 @@ const rtcConfig = {
    START VIVA
 ========================= */
 
-startBtn.onclick = () => {
+startBtn.onclick =
+async () => {
 
     startScreen.style.display =
     "none";
 
     main.style.display =
     "flex";
-    /* =====================
-   START FULLSCREEN
-===================== */
-
-if(
-    document.documentElement
-    .requestFullscreen
-){
-
-    document.documentElement
-    .requestFullscreen();
-
-}
-
-    main.style.visibility =
-    "visible";
-
-    main.style.opacity =
-    "1";
-
-    // SHOW BUTTONS
-
-    const controls =
-    document.querySelector(
-        ".controls"
-    );
-
-    if(controls){
-
-        controls.classList.add(
-            "show"
-        );
-
-    }
 
     connectSocket();
-/* =====================
-       START CAMERA
-    ===================== */
 
-     startMedia();
+    await startMedia();
+
 };
 
 
@@ -333,19 +244,6 @@ function connectSocket(){
             "Connected to viva room"
         );
 
-        // CLEAR OLD HEARTBEAT
-
-        if(heartbeat){
-
-            clearInterval(
-                heartbeat
-            );
-
-        }
-
-        // KEEP RENDER ALIVE
-
-        heartbeat =
         setInterval(() => {
 
             if(
@@ -472,10 +370,6 @@ function connectSocket(){
 
         }
 
-        /* =====================
-           SIR STOPPED
-        ===================== */
-
         if(
             msg.type ===
             "sir-stopped-speaking"
@@ -488,7 +382,7 @@ function connectSocket(){
         }
 
         /* =====================
-           MIC ON
+           MIC REQUEST
         ===================== */
 
         if(
@@ -512,12 +406,6 @@ function connectSocket(){
 
             try{
 
-                if(!webrtcStarted){
-
-                    await startMedia();
-
-                }
-
                 if(
                     peerConnection &&
                     !peerConnection.remoteDescription
@@ -533,8 +421,6 @@ function connectSocket(){
                     );
 
                 }
-
-                // APPLY PENDING ICE
 
                 for(
                     const candidate
@@ -640,15 +526,13 @@ function connectSocket(){
         }
 
         /* =====================
-           END VOICE
+           VOICE END
         ===================== */
 
         if(
             msg.type ===
             "sir-voice-ended"
         ){
-
-            stopWebRTC();
 
             createSystemMessage(
                 "Professor ended voice chat"
@@ -660,29 +544,8 @@ function connectSocket(){
 
 }
 
+
 /* =========================
-   ENABLE VOICE
-========================= */
-
-enableVoiceBtn.onclick =
-async () => {
-
-    voicePopup.style.display =
-    "none";
-
-    /* =====================
-       ENABLE MIC
-    ===================== */
-
-    await enableMicrophone();
-
-};
-/* =========================
-   START MEDIA
-========================= */
-
-async function startMedia(){
-    /* =========================
    ENABLE MICROPHONE
 ========================= */
 
@@ -741,6 +604,28 @@ async function enableMicrophone(){
 
 }
 
+
+/* =========================
+   ENABLE VOICE
+========================= */
+
+enableVoiceBtn.onclick =
+async () => {
+
+    voicePopup.style.display =
+    "none";
+
+    await enableMicrophone();
+
+};
+
+
+/* =========================
+   START MEDIA
+========================= */
+
+async function startMedia(){
+
     try{
 
         if(peerConnection){
@@ -752,88 +637,120 @@ async function enableMicrophone(){
         localStream =
         await navigator
         .mediaDevices
-        localStream =
-await navigator
-.mediaDevices
-.getUserMedia({
+        .getUserMedia({
 
-    video:{
+            video:{
 
-        facingMode:"user",
+                facingMode:"user",
 
-        width:{
-            ideal:640
-        },
+                width:{
+                    ideal:640
+                },
 
-        height:{
-            ideal:360
-        },
+                height:{
+                    ideal:360
+                },
 
-        frameRate:{
-            ideal:15,
-            max:18
-        }
+                frameRate:{
+                    ideal:15,
+                    max:18
+                }
 
-    },
+            },
 
-    /* =====================
-       MIC OFF INITIALLY
-    ===================== */
+            audio:false
 
-    audio:false
-
-});
+        });
 
         webrtcStarted = true;
-        /* =====================
-   LOAD FACE AI
-===================== */
-
-if(!faceDetectionStarted){
-
-    await loadFaceModels();
-
-   
-
-}
 
         studentVideo.srcObject =
         localStream;
-        /* =====================
-   WAIT VIDEO READY
-===================== */
-
-studentVideo.onloadedmetadata =
-() => {
-
-    startFaceDetection();
-
-};
 
         createPeerConnection();
 
+        /* =====================
+           ADD VIDEO TRACKS
+        ===================== */
+
         localStream
-        .getTracks()
+        .getVideoTracks()
         .forEach(track => {
 
-            peerConnection
-            .addTrack(
+            peerConnection.addTrack(
                 track,
                 localStream
             );
 
         });
 
-        socket.send(
+        /* =====================
+           CREATE OFFER
+        ===================== */
 
-            JSON.stringify({
+        const offer =
 
-                type:
-                "student-camera-on"
+        await peerConnection
+        .createOffer({
 
-            })
+            offerToReceiveVideo:true,
 
+            offerToReceiveAudio:true
+
+        });
+
+        await peerConnection
+        .setLocalDescription(
+            offer
         );
+
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
+
+            socket.send(
+
+                JSON.stringify({
+
+                    type:
+                    "webrtc-offer",
+
+                    offer:
+                    peerConnection.localDescription
+
+                })
+
+            );
+
+        }
+
+        studentVideo.onloadedmetadata =
+        () => {
+
+            startFaceDetection();
+
+            monitorCamera();
+
+        };
+
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
+
+            socket.send(
+
+                JSON.stringify({
+
+                    type:
+                    "student-camera-on"
+
+                })
+
+            );
+
+        }
 
     }catch(err){
 
@@ -843,219 +760,13 @@ studentVideo.onloadedmetadata =
         );
 
         errorBox.innerText =
-        "Camera or microphone permission denied";
+        "Camera access denied";
 
     }
 
 }
 
 
-// load models
-/* =========================
-   LOAD FACE MODELS
-========================= */
-
-async function loadFaceModels(){
-
-    if(typeof faceapi === "undefined"){
-
-        console.log(
-            "FACE API NOT LOADED"
-        );
-
-        return;
-
-    }
-
-    try{
-
-        await faceapi.nets
-        .tinyFaceDetector
-        .loadFromUri(
-            "/static/models"
-        );
-
-        await faceapi.nets
-        .faceLandmark68Net
-        .loadFromUri(
-            "/static/models"
-        );
-
-        console.log(
-            "Face models loaded"
-        );
-
-    }catch(err){
-
-        console.log(
-            "FACE MODEL ERROR:",
-            err
-        );
-
-    }
-
-}
-/* =========================
-   FACE DETECTION
-========================= */
-
-function startFaceDetection(){
-
-    if(faceInterval){
-
-        clearInterval(
-            faceInterval
-        );
-
-    }
-
-    faceDetectionStarted = true;
-
-    faceInterval =
-    setInterval(async () => {
-
-        try{
-
-            if(
-                !studentVideo ||
-                studentVideo.readyState < 2
-            ){
-
-                return;
-
-            }
-
-            const detections =
-
-            await faceapi
-
-            .detectAllFaces(
-
-                studentVideo,
-
-                new faceapi
-                .TinyFaceDetectorOptions()
-
-            )
-
-            .withFaceLandmarks();
-
-            /* =====================
-               NO FACE
-            ===================== */
-
-            if(
-                detections.length === 0
-            ){
-
-                sendCheatingAlert(
-                    "Face not visible"
-                );
-
-                return;
-            }
-
-            /* =====================
-               MULTIPLE FACES
-            ===================== */
-
-            if(
-                detections.length > 1
-            ){
-
-                sendCheatingAlert(
-                    "Multiple faces detected"
-                );
-
-            }
-
-            const landmarks =
-            detections[0]
-            .landmarks;
-
-            const nose =
-            landmarks.getNose();
-
-            const jaw =
-            landmarks.getJawOutline();
-
-            const leftEye =
-            landmarks.getLeftEye();
-
-            const rightEye =
-            landmarks.getRightEye();
-
-            const noseX =
-            nose[3].x;
-
-            const leftJaw =
-            jaw[0].x;
-
-            const rightJaw =
-            jaw[16].x;
-
-            const faceCenter =
-            (leftJaw + rightJaw) / 2;
-
-            const diff =
-            noseX - faceCenter;
-
-            /* =====================
-               LOOKING LEFT/RIGHT
-            ===================== */
-
-            if(diff < -20){
-
-                sendCheatingAlert(
-                    "Looking left"
-                );
-
-            }
-
-            else if(diff > 20){
-
-                sendCheatingAlert(
-                    "Looking right"
-                );
-
-            }
-
-            /* =====================
-               LOOKING DOWN
-            ===================== */
-
-            const eyeY =
-
-            (
-                leftEye[0].y +
-                rightEye[3].y
-            ) / 2;
-
-            const noseY =
-            nose[6].y;
-
-            if(
-                noseY - eyeY > 55
-            ){
-
-                sendCheatingAlert(
-                    "Looking downward"
-                );
-
-            }
-
-        }catch(err){
-
-            console.log(
-                "FACE DETECTION ERROR:",
-                err
-            );
-
-        }
-
-    }, 3000);
-
-}
 /* =========================
    CREATE PEER
 ========================= */
@@ -1141,240 +852,240 @@ function createPeerConnection(){
 
     };
 
-    peerConnection.onconnectionstatechange =
-    () => {
+}
 
-        if(!peerConnection){
 
-            return;
+/* =========================
+   LOAD FACE MODELS
+========================= */
 
-        }
+async function loadFaceModels(){
+
+    if(typeof faceapi === "undefined"){
 
         console.log(
-            peerConnection.connectionState
+            "FACE API NOT LOADED"
         );
 
-    };
+        return;
+
+    }
+
+    try{
+
+        await faceapi.nets
+        .tinyFaceDetector
+        .loadFromUri(
+            "/static/models"
+        );
+
+        await faceapi.nets
+        .faceLandmark68Net
+        .loadFromUri(
+            "/static/models"
+        );
+
+        console.log(
+            "Face models loaded"
+        );
+
+    }catch(err){
+
+        console.log(
+            "FACE MODEL ERROR:",
+            err
+        );
+
+    }
 
 }
 
 
 /* =========================
-   STOP WEBRTC
+   FACE DETECTION
 ========================= */
 
-function stopWebRTC(){
+async function startFaceDetection(){
 
-    if(localStream){
+    await loadFaceModels();
 
-        localStream
-        .getTracks()
-        .forEach(track => {
+    if(faceDetectionInterval){
 
-            track.stop();
-
-        });
-
-        localStream = null;
+        clearInterval(
+            faceDetectionInterval
+        );
 
     }
 
-    if(peerConnection){
+    faceDetectionInterval =
+    setInterval(async () => {
 
-        peerConnection.close();
+        try{
 
-        peerConnection = null;
+            if(
+                !studentVideo ||
+                studentVideo.readyState < 2
+            ){
 
-    }
+                return;
 
-    studentVideo.srcObject =
-    null;
+            }
 
-    remoteAudio.srcObject =
-    null;
+            const detection =
 
-    pendingCandidates = [];
+            await faceapi
+            .detectSingleFace(
 
-    muted = false;
+                studentVideo,
 
-    webrtcStarted = false;
-if(faceInterval){
+                new faceapi
+                .TinyFaceDetectorOptions()
 
-    clearInterval(
-        faceInterval
-    );
+            )
+            .withFaceLandmarks();
 
-    faceInterval = null;
+            if(!detection){
 
-}
-}
+                sendCheatingAlert(
+                    "Face not visible"
+                );
 
+                return;
+            }
 
-/* =========================
-   WEB SPEECH API
-========================= */
+            const nose =
+            detection.landmarks
+            .getNose()[3];
 
-if(
+            if(nose.x < 220){
 
-    "SpeechRecognition" in window ||
+                sendCheatingAlert(
+                    "Looking left"
+                );
 
-    "webkitSpeechRecognition" in window
+            }
 
-){
+            if(nose.x > 420){
 
-    const SpeechRecognition =
+                sendCheatingAlert(
+                    "Looking right"
+                );
 
-    window.SpeechRecognition ||
+            }
 
-    window.webkitSpeechRecognition;
+            if(nose.y > 260){
 
-    recognition =
-    new SpeechRecognition();
+                sendCheatingAlert(
+                    "Looking downward"
+                );
 
-    recognition.continuous =
-    false;
+            }
 
-    recognition.interimResults =
-    false;
+        }catch(err){
 
-    recognition.lang =
-    "en-US";
-
-    recognition.maxAlternatives =
-    1;
-
-    recognition.onstart = () => {
-
-        console.log(
-            "Recording Started"
-        );
-
-        createSystemMessage(
-            "Recording answer..."
-        );
-
-    };
-
-    recognition.onresult =
-    (event) => {
-
-        console.log(
-            "Speech Result:",
-            event
-        );
-
-        const transcript =
-
-        event.results[0][0]
-        .transcript
-        .trim();
-
-        if(
-            !transcript
-        ){
-
-            return;
-
-        }
-
-        tempAnswer =
-        transcript;
-
-        // REMOVE OLD
-
-        if(currentBubbleA){
-
-            currentBubbleA.remove();
-
-        }
-
-        // SHOW NEW
-
-        currentBubbleA =
-        createBubble(
-
-            `You: ${transcript}`,
-
-            "answer"
-
-        );
-
-        // SEND TO SIR PAGE
-
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
-
-            socket.send(
-
-                JSON.stringify({
-
-                    type:"answer",
-
-                    text:transcript
-
-                })
-
+            console.log(
+                "FACE DETECTION ERROR:",
+                err
             );
 
         }
-// api live analysis
-fetch("/api/live-analysis", {
 
-    method:"POST",
+    }, 4000);
 
-    headers:{
-        "Content-Type":
-        "application/json"
-    },
+}
 
-    body:JSON.stringify({
 
-        question:
-        tempQuestion,
+/* =========================
+   CAMERA MONITOR
+========================= */
 
-        answer:
-        transcript
+function monitorCamera(){
 
-    })
+    if(cameraMonitorInterval){
 
-})
-.then(async (res) => {
+        clearInterval(
+            cameraMonitorInterval
+        );
+
+    }
+
+    cameraMonitorInterval =
+    setInterval(() => {
+
+        if(!localStream){
+
+            return;
+
+        }
+
+        const videoTracks =
+
+        localStream.getVideoTracks();
+
+        if(
+            videoTracks.length === 0
+        ){
+
+            sendCheatingAlert(
+                "Camera disconnected"
+            );
+
+            return;
+        }
+
+        const track =
+        videoTracks[0];
+
+        if(
+            !track.enabled
+        ){
+
+            sendCheatingAlert(
+                "Camera turned off"
+            );
+
+        }
+
+        if(
+            track.readyState ===
+            "ended"
+        ){
+
+            sendCheatingAlert(
+                "Camera access lost"
+            );
+
+        }
+
+    }, 3000);
+
+}
+
+
+/* =========================
+   CHEATING ALERT
+========================= */
+
+function sendCheatingAlert(text){
 
     console.log(
-        "LIVE ANALYSIS STATUS:",
-        res.status
-    );
-
-    const data =
-    await res.json();
-
-    console.log(
-        "LIVE ANALYSIS RESPONSE:",
-        data
+        "CHEATING:",
+        text
     );
 
     if(
-        data.success &&
         socket &&
         socket.readyState === 1
     ){
-
-        console.log(
-            "SENDING LIVE ANALYSIS:",
-            data.analysis
-        );
 
         socket.send(
 
             JSON.stringify({
 
                 type:
-                "live-analysis",
+                "cheating-alert",
 
-                analysis:
-                data.analysis
+                text:text
 
             })
 
@@ -1382,46 +1093,156 @@ fetch("/api/live-analysis", {
 
     }
 
-    else{
+}
 
-        console.log(
-            "LIVE ANALYSIS FAILED"
-        );
 
-    }
+/* =========================
+   SPEECH RECOGNITION
+========================= */
 
-})
-.catch(err => {
+if(
+    "webkitSpeechRecognition"
+    in window
+){
 
-    console.log(
-        "LIVE ANALYSIS ERROR:",
-        err
-    );
+    recognition =
+    new webkitSpeechRecognition();
 
-});}
-    // end 
+    recognition.continuous =
+    false;
 
-    recognition.onerror =
-    (event) => {
+    recognition.lang =
+    "en-US";
 
-        console.log(
-            "Speech Error:",
-            event.error
-        );
+    recognition.interimResults =
+    false;
 
-        errorBox.innerText =
+    recognition.maxAlternatives =
+    1;
 
-        "Mic Error: " +
+    recognition.onresult =
+    async (e) => {
 
-        event.error;
+        const text =
+        e.results[0][0]
+        .transcript;
 
-    };
+        if(
+            mode ===
+            "answer"
+        ){
 
-    recognition.onend = () => {
+            tempAnswer =
+            text;
 
-        console.log(
-            "Recording Stopped"
-        );
+            if(currentBubbleA){
+
+                currentBubbleA.remove();
+
+            }
+
+            currentBubbleA =
+            createBubble(
+
+                text,
+
+                "answer"
+
+            );
+
+            if(
+                socket &&
+                socket.readyState === 1
+            ){
+
+                socket.send(
+
+                    JSON.stringify({
+
+                        type:
+                        "answer",
+
+                        text:text
+
+                    })
+
+                );
+
+            }
+
+            /* =====================
+               LIVE AI ANALYSIS
+            ===================== */
+
+            try{
+
+                const res =
+                await fetch(
+
+                    "/api/live-analysis",
+
+                    {
+
+                        method:"POST",
+
+                        headers:{
+                            "Content-Type":
+                            "application/json"
+                        },
+
+                        body:JSON.stringify({
+
+                            question:
+                            tempQuestion,
+
+                            answer:text
+
+                        })
+
+                    }
+
+                );
+
+                const data =
+                await res.json();
+
+                console.log(
+                    "LIVE ANALYSIS RESPONSE:",
+                    data
+                );
+
+                if(
+                    data.success &&
+                    socket &&
+                    socket.readyState === 1
+                ){
+
+                    socket.send(
+
+                        JSON.stringify({
+
+                            type:
+                            "live-analysis",
+
+                            analysis:
+                            data.analysis
+
+                        })
+
+                    );
+
+                }
+
+            }catch(err){
+
+                console.log(
+                    "LIVE ANALYSIS ERROR:",
+                    err
+                );
+
+            }
+
+        }
 
     };
 
@@ -1433,6 +1254,8 @@ fetch("/api/live-analysis", {
 ========================= */
 
 recordBtn.onclick = () => {
+
+    mode = "answer";
 
     errorBox.innerText =
     "";
@@ -1448,7 +1271,7 @@ recordBtn.onclick = () => {
 
     try{
 
-        recognition.stop();
+        recognition.abort();
 
     }catch(e){}
 
@@ -1456,7 +1279,7 @@ recordBtn.onclick = () => {
 
         recognition.start();
 
-    }, 200);
+    }, 150);
 
 };
 
@@ -1492,28 +1315,6 @@ storeBtn.onclick = () => {
 
         errorBox.innerText =
         "Question or answer missing";
-
-        return;
-
-    }
-
-    // PREVENT DUPLICATE
-
-    const exists =
-    qaList.some(q =>
-
-        q.question ===
-        tempQuestion &&
-
-        q.answer ===
-        tempAnswer
-
-    );
-
-    if(exists){
-
-        errorBox.innerText =
-        "Already stored";
 
         return;
 
@@ -1744,6 +1545,73 @@ muteBtn.onclick = () => {
 
 
 /* =========================
+   STOP WEBRTC
+========================= */
+
+function stopWebRTC(){
+
+    if(faceDetectionInterval){
+
+        clearInterval(
+            faceDetectionInterval
+        );
+
+    }
+
+    if(cameraMonitorInterval){
+
+        clearInterval(
+            cameraMonitorInterval
+        );
+
+    }
+
+    if(localStream){
+
+        localStream
+        .getTracks()
+        .forEach(track => {
+
+            track.stop();
+
+        });
+
+        localStream = null;
+
+    }
+
+    if(peerConnection){
+
+        peerConnection.close();
+
+        peerConnection = null;
+
+    }
+
+    if(studentVideo){
+
+        studentVideo.srcObject =
+        null;
+
+    }
+
+    if(remoteAudio){
+
+        remoteAudio.srcObject =
+        null;
+
+    }
+
+    pendingCandidates = [];
+
+    muted = false;
+
+    webrtcStarted = false;
+
+}
+
+
+/* =========================
    CREATE BUBBLE
 ========================= */
 
@@ -1831,38 +1699,31 @@ function goBack(){
 
 
 /* =========================
-   TAB SWITCH DETECTION
+   TAB SWITCH
 ========================= */
 
 document.addEventListener(
-
     "visibilitychange",
-
     () => {
 
         if(document.hidden){
 
             sendCheatingAlert(
-
-                "Tab switching detected"
-
+                "Tab switched"
             );
 
         }
 
     }
-
 );
 
 
 /* =========================
-   FULLSCREEN EXIT DETECTION
+   FULLSCREEN EXIT
 ========================= */
 
 document.addEventListener(
-
     "fullscreenchange",
-
     () => {
 
         if(
@@ -1870,30 +1731,8 @@ document.addEventListener(
         ){
 
             sendCheatingAlert(
-
                 "Fullscreen exited"
-
             );
-
-        }
-
-    }
-
-);
-
-/* =========================
-   CLEANUP
-========================= */
-
-window.addEventListener(
-    "beforeunload",
-    () => {
-
-        stopWebRTC();
-
-        if(socket){
-
-            socket.close();
 
         }
 
