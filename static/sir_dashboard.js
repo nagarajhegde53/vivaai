@@ -1,7 +1,8 @@
 /* =========================================================
    ADVANCED SIR_DASHBOARD.JS
-   FULL FEATURE VERSION
-   Compatible with advanced viva.js
+   FULLY FIXED
+   Compatible with FINAL viva.js
+   NO BASIC VERSION
 ========================================================= */
 
 
@@ -9,14 +10,14 @@
    ELEMENTS
 ========================= */
 
-const studentGrid =
-document.getElementById(
-    "studentGrid"
+const studentList =
+document.querySelector(
+    ".student-list"
 );
 
 const liveVideo =
 document.getElementById(
-    "liveVideo"
+    "studentLiveVideo"
 );
 
 const remoteAudio =
@@ -29,9 +30,9 @@ document.querySelector(
     ".chat-box"
 );
 
-const chatInput =
+const questionInput =
 document.getElementById(
-    "chatInput"
+    "questionInput"
 );
 
 const sendBtn =
@@ -144,6 +145,8 @@ let speaking = false;
 
 let speakingInterval = null;
 
+let currentStudents = [];
+
 
 /* =========================
    RTC CONFIG
@@ -191,49 +194,87 @@ async function loadStudents(){
 
         }
 
-        studentGrid.innerHTML =
-        "";
+        currentStudents =
+        data.students;
 
-        data.students.forEach(student => {
-
-            const div =
-            document.createElement(
-                "div"
-            );
-
-            div.className =
-            "student-card";
-
-            div.innerHTML = `
-
-                <h3>
-                    ${student.username}
-                </h3>
-
-                <p>
-                    ${student.status}
-                </p>
-
-                <button
-                onclick="connectToStudent('${student.room_id}')">
-
-                    Connect
-
-                </button>
-
-            `;
-
-            studentGrid.appendChild(
-                div
-            );
-
-        });
+        renderStudents();
 
     }catch(err){
 
-        console.log(err);
+        console.log(
+            "LOAD STUDENTS ERROR:",
+            err
+        );
 
     }
+
+}
+
+
+/* =========================
+   RENDER STUDENTS
+========================= */
+
+function renderStudents(){
+
+    if(!studentList){
+
+        return;
+
+    }
+
+    studentList.innerHTML =
+    "";
+
+    currentStudents.forEach(student => {
+
+        const card =
+        document.createElement(
+            "div"
+        );
+
+        card.className =
+        "student-card";
+
+        card.innerHTML = `
+
+            <h3>
+                ${student.username}
+            </h3>
+
+            <p class="student-status">
+
+                ${student.status || "Waiting"}
+
+            </p>
+
+            <button
+            class="join-btn">
+
+                Join Viva
+
+            </button>
+
+        `;
+
+        const joinBtn =
+        card.querySelector(
+            ".join-btn"
+        );
+
+        joinBtn.onclick = () => {
+
+            connectToStudent(
+                student.room_id
+            );
+
+        };
+
+        studentList.appendChild(
+            card
+        );
+
+    });
 
 }
 
@@ -286,12 +327,18 @@ function connectSocket(){
 
     socket.onopen = () => {
 
+        reconnecting = false;
+
         createSystemMessage(
             "Connected"
         );
 
         updateConnectionStatus(
             "Connected"
+        );
+
+        console.log(
+            "CONNECTED"
         );
 
     };
@@ -377,6 +424,21 @@ function connectSocket(){
 
                 "answer"
 
+            );
+
+        }
+
+        /* =====================
+           STUDENT CAMERA
+        ===================== */
+
+        if(
+            msg.type ===
+            "student-camera-on"
+        ){
+
+            createSystemMessage(
+                "Student camera active"
             );
 
         }
@@ -469,7 +531,10 @@ function connectSocket(){
 
             }catch(err){
 
-                console.log(err);
+                console.log(
+                    "OFFER ERROR:",
+                    err
+                );
 
             }
 
@@ -955,7 +1020,7 @@ muteVoiceBtn.onclick = () => {
 function sendQuestion(){
 
     const text =
-    chatInput.value.trim();
+    questionInput.value.trim();
 
     if(!text){
 
@@ -984,7 +1049,7 @@ function sendQuestion(){
 
     );
 
-    chatInput.value =
+    questionInput.value =
     "";
 
 }
@@ -994,10 +1059,14 @@ function sendQuestion(){
    SEND EVENTS
 ========================= */
 
-sendBtn.onclick =
-sendQuestion;
+if(sendBtn){
 
-chatInput.addEventListener(
+    sendBtn.onclick =
+    sendQuestion;
+
+}
+
+questionInput.addEventListener(
     "keypress",
     (e) => {
 
@@ -1119,6 +1188,12 @@ function addTranscript(role,text){
     ){
 
         transcriptHistory.shift();
+
+    }
+
+    if(!transcriptBox){
+
+        return;
 
     }
 

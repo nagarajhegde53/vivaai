@@ -1,7 +1,8 @@
 /* =========================================================
    ADVANCED VIVA.JS
-   FULL FEATURE VERSION
-   Compatible with advanced sir_dashboard.js
+   FULLY FIXED
+   Compatible with YOUR REAL HTML + sir_dashboard.js
+   NO BASIC VERSION
 ========================================================= */
 
 
@@ -137,11 +138,11 @@ let muted = false;
 
 let faceDetectionInterval = null;
 
-let faceModelsLoaded = false;
-
 let monitorInterval = null;
 
-let speaking = false;
+let faceModelsLoaded = false;
+
+let micEnabled = false;
 
 
 /* =========================
@@ -175,15 +176,23 @@ const rtcConfig = {
 startBtn.onclick =
 async () => {
 
-    startScreen.style.display =
-    "none";
+    try{
 
-    main.style.display =
-    "flex";
+        startScreen.style.display =
+        "none";
 
-    connectSocket();
+        main.style.display =
+        "flex";
 
-    await startMedia();
+        connectSocket();
+
+        await startCamera();
+
+    }catch(err){
+
+        console.log(err);
+
+    }
 
 };
 
@@ -216,11 +225,13 @@ function connectSocket(){
 
     socket.onopen = () => {
 
-        console.log(
+        reconnecting = false;
+
+        createSystemMessage(
             "Connected"
         );
 
-        createSystemMessage(
+        console.log(
             "Connected"
         );
 
@@ -249,9 +260,7 @@ function connectSocket(){
 
     socket.onerror = (err) => {
 
-        console.log(
-            err
-        );
+        console.log(err);
 
     };
 
@@ -276,12 +285,6 @@ function connectSocket(){
 
             tempQuestion =
             msg.text;
-
-            if(currentBubbleQ){
-
-                currentBubbleQ.remove();
-
-            }
 
             currentBubbleQ =
             createBubble(
@@ -314,7 +317,7 @@ function connectSocket(){
         }
 
         /* =====================
-           MIC REQUEST
+           VOICE REQUEST
         ===================== */
 
         if(
@@ -324,6 +327,45 @@ function connectSocket(){
 
             voicePopup.style.display =
             "flex";
+
+        }
+
+        /* =====================
+           WEBRTC ANSWER
+        ===================== */
+
+        if(
+            msg.type ===
+            "webrtc-answer"
+        ){
+
+            try{
+
+                if(
+                    peerConnection &&
+                    !peerConnection.currentRemoteDescription
+                ){
+
+                    await peerConnection
+                    .setRemoteDescription(
+
+                        new RTCSessionDescription(
+                            msg.answer
+                        )
+
+                    );
+
+                    createSystemMessage(
+                        "Video Connected"
+                    );
+
+                }
+
+            }catch(err){
+
+                console.log(err);
+
+            }
 
         }
 
@@ -364,47 +406,6 @@ function connectSocket(){
 
             }catch(err){
 
-                console.log(
-                    err
-                );
-
-            }
-
-        }
-
-        /* =====================
-           ANSWER
-        ===================== */
-
-        if(
-            msg.type ===
-            "webrtc-answer"
-        ){
-
-            try{
-
-                if(
-                    peerConnection &&
-                    !peerConnection.currentRemoteDescription
-                ){
-
-                    await peerConnection
-                    .setRemoteDescription(
-
-                        new RTCSessionDescription(
-                            msg.answer
-                        )
-
-                    );
-
-                    createSystemMessage(
-                        "Video Connected"
-                    );
-
-                }
-
-            }catch(err){
-
                 console.log(err);
 
             }
@@ -417,10 +418,10 @@ function connectSocket(){
 
 
 /* =========================
-   START MEDIA
+   START CAMERA
 ========================= */
 
-async function startMedia(){
+async function startCamera(){
 
     try{
 
@@ -438,10 +439,12 @@ async function startMedia(){
         studentVideo.srcObject =
         localStream;
 
+        await studentVideo.play();
+
         createPeerConnection();
 
         localStream
-        .getVideoTracks()
+        .getTracks()
         .forEach(track => {
 
             peerConnection.addTrack(
@@ -481,15 +484,6 @@ async function startMedia(){
 
         );
 
-        studentVideo.onloadedmetadata =
-        () => {
-
-            startFaceDetection();
-
-            startMonitoring();
-
-        };
-
         socket.send(
 
             JSON.stringify({
@@ -501,6 +495,15 @@ async function startMedia(){
 
         );
 
+        studentVideo.onloadedmetadata =
+        () => {
+
+            startMonitoring();
+
+            startFaceDetection();
+
+        };
+
     }catch(err){
 
         console.log(err);
@@ -511,7 +514,7 @@ async function startMedia(){
 
 
 /* =========================
-   PEER
+   PEER CONNECTION
 ========================= */
 
 function createPeerConnection(){
@@ -597,6 +600,14 @@ async () => {
 
     try{
 
+        if(micEnabled){
+
+            return;
+
+        }
+
+        micEnabled = true;
+
         voicePopup.style.display =
         "none";
 
@@ -644,6 +655,12 @@ async () => {
 async function loadFaceModels(){
 
     try{
+
+        if(faceModelsLoaded){
+
+            return true;
+
+        }
 
         if(typeof faceapi === "undefined"){
 
@@ -773,7 +790,10 @@ async function startFaceDetection(){
 
         }catch(err){
 
-            console.log(err);
+            console.log(
+                "FACE DETECTION ERROR:",
+                err
+            );
 
         }
 
@@ -830,9 +850,7 @@ function startMonitoring(){
 
 function sendCheatingAlert(text){
 
-    console.log(
-        text
-    );
+    console.log(text);
 
     if(
         socket &&
@@ -891,12 +909,6 @@ if(
         tempAnswer =
         text;
 
-        if(currentBubbleA){
-
-            currentBubbleA.remove();
-
-        }
-
         currentBubbleA =
         createBubble(
 
@@ -920,7 +932,7 @@ if(
         );
 
         /* =====================
-           LIVE AI ANALYSIS
+           LIVE ANALYSIS
         ===================== */
 
         try{
@@ -955,9 +967,7 @@ if(
             const data =
             await res.json();
 
-            if(
-                data.success
-            ){
+            if(data.success){
 
                 socket.send(
 
@@ -1027,6 +1037,9 @@ storeBtn.onclick = () => {
         !tempAnswer
     ){
 
+        errorBox.innerText =
+        "Question or answer missing";
+
         return;
 
     }
@@ -1070,7 +1083,7 @@ function renderStored(){
             <b>Q:</b>
             ${q.question}
 
-            <br>
+            <br><br>
 
             <b>A:</b>
             ${q.answer}
@@ -1175,11 +1188,23 @@ muteBtn.onclick = () => {
 
     });
 
+    muteBtn.innerText =
+
+    muted
+
+    ?
+
+    "Unmute"
+
+    :
+
+    "Mute";
+
 };
 
 
 /* =========================
-   CHAT
+   CHAT BUBBLES
 ========================= */
 
 function createBubble(text,type){
@@ -1208,7 +1233,7 @@ function createBubble(text,type){
 
 
 /* =========================
-   SYSTEM
+   SYSTEM MESSAGE
 ========================= */
 
 function createSystemMessage(text){
@@ -1274,3 +1299,15 @@ document.addEventListener(
 
     }
 );
+
+
+/* =========================
+   BACK BUTTON
+========================= */
+
+function goBack(){
+
+    window.location.href =
+    "/dashboard";
+
+}
