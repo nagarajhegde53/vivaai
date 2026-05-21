@@ -197,6 +197,14 @@ let pendingCandidates = [];
 
 let webrtcStarted = false;
 
+/* =========================
+   FACE DETECTION
+========================= */
+
+let faceDetectionStarted = false;
+
+let faceInterval = null;
+
 
 /* =========================
    RTC CONFIG
@@ -719,6 +727,17 @@ async function startMedia(){
         });
 
         webrtcStarted = true;
+        /* =====================
+   LOAD FACE AI
+===================== */
+
+if(!faceDetectionStarted){
+
+    await loadFaceModels();
+
+    startFaceDetection();
+
+}
 
         studentVideo.srcObject =
         localStream;
@@ -763,6 +782,202 @@ async function startMedia(){
 }
 
 
+// load models
+/* =========================
+   LOAD FACE MODELS
+========================= */
+
+async function loadFaceModels(){
+
+    try{
+
+        await faceapi.nets
+        .tinyFaceDetector
+        .loadFromUri(
+            "/static/models"
+        );
+
+        await faceapi.nets
+        .faceLandmark68Net
+        .loadFromUri(
+            "/static/models"
+        );
+
+        console.log(
+            "Face models loaded"
+        );
+
+    }catch(err){
+
+        console.log(
+            "FACE MODEL ERROR:",
+            err
+        );
+
+    }
+
+}
+/* =========================
+   FACE DETECTION
+========================= */
+
+function startFaceDetection(){
+
+    if(faceInterval){
+
+        clearInterval(
+            faceInterval
+        );
+
+    }
+
+    faceDetectionStarted = true;
+
+    faceInterval =
+    setInterval(async () => {
+
+        try{
+
+            if(
+                !studentVideo ||
+                studentVideo.readyState < 2
+            ){
+
+                return;
+
+            }
+
+            const detections =
+
+            await faceapi
+
+            .detectAllFaces(
+
+                studentVideo,
+
+                new faceapi
+                .TinyFaceDetectorOptions()
+
+            )
+
+            .withFaceLandmarks();
+
+            /* =====================
+               NO FACE
+            ===================== */
+
+            if(
+                detections.length === 0
+            ){
+
+                sendCheatingAlert(
+                    "Face not visible"
+                );
+
+                return;
+            }
+
+            /* =====================
+               MULTIPLE FACES
+            ===================== */
+
+            if(
+                detections.length > 1
+            ){
+
+                sendCheatingAlert(
+                    "Multiple faces detected"
+                );
+
+            }
+
+            const landmarks =
+            detections[0]
+            .landmarks;
+
+            const nose =
+            landmarks.getNose();
+
+            const jaw =
+            landmarks.getJawOutline();
+
+            const leftEye =
+            landmarks.getLeftEye();
+
+            const rightEye =
+            landmarks.getRightEye();
+
+            const noseX =
+            nose[3].x;
+
+            const leftJaw =
+            jaw[0].x;
+
+            const rightJaw =
+            jaw[16].x;
+
+            const faceCenter =
+            (leftJaw + rightJaw) / 2;
+
+            const diff =
+            noseX - faceCenter;
+
+            /* =====================
+               LOOKING LEFT/RIGHT
+            ===================== */
+
+            if(diff < -20){
+
+                sendCheatingAlert(
+                    "Looking left"
+                );
+
+            }
+
+            else if(diff > 20){
+
+                sendCheatingAlert(
+                    "Looking right"
+                );
+
+            }
+
+            /* =====================
+               LOOKING DOWN
+            ===================== */
+
+            const eyeY =
+
+            (
+                leftEye[0].y +
+                rightEye[3].y
+            ) / 2;
+
+            const noseY =
+            nose[6].y;
+
+            if(
+                noseY - eyeY > 55
+            ){
+
+                sendCheatingAlert(
+                    "Looking downward"
+                );
+
+            }
+
+        }catch(err){
+
+            console.log(
+                "FACE DETECTION ERROR:",
+                err
+            );
+
+        }
+
+    }, 3000);
+
+}
 /* =========================
    CREATE PEER
 ========================= */
@@ -905,7 +1120,15 @@ function stopWebRTC(){
     muted = false;
 
     webrtcStarted = false;
+if(faceInterval){
 
+    clearInterval(
+        faceInterval
+    );
+
+    faceInterval = null;
+
+}
 }
 
 
@@ -1019,7 +1242,7 @@ if(
 
         }
 // api live analysis
-fetch("/api/live-analysis",{
+fetch("/api/live-analysis", {
 
     method:"POST",
 
@@ -1030,15 +1253,29 @@ fetch("/api/live-analysis",{
 
     body:JSON.stringify({
 
-        question:tempQuestion,
+        question:
+        tempQuestion,
 
-        answer:transcript
+        answer:
+        transcript
 
     })
 
 })
-.then(res => res.json())
-.then(data => {
+.then(async (res) => {
+
+    console.log(
+        "LIVE ANALYSIS STATUS:",
+        res.status
+    );
+
+    const data =
+    await res.json();
+
+    console.log(
+        "LIVE ANALYSIS RESPONSE:",
+        data
+    );
 
     if(
         data.success &&
@@ -1046,11 +1283,17 @@ fetch("/api/live-analysis",{
         socket.readyState === 1
     ){
 
+        console.log(
+            "SENDING LIVE ANALYSIS:",
+            data.analysis
+        );
+
         socket.send(
 
             JSON.stringify({
 
-                type:"live-analysis",
+                type:
+                "live-analysis",
 
                 analysis:
                 data.analysis
@@ -1061,8 +1304,23 @@ fetch("/api/live-analysis",{
 
     }
 
-});
-    };
+    else{
+
+        console.log(
+            "LIVE ANALYSIS FAILED"
+        );
+
+    }
+
+})
+.catch(err => {
+
+    console.log(
+        "LIVE ANALYSIS ERROR:",
+        err
+    );
+
+});}
     // end 
 
     recognition.onerror =
