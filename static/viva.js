@@ -735,12 +735,22 @@ if(!faceDetectionStarted){
 
     await loadFaceModels();
 
-    startFaceDetection();
+   
 
 }
 
         studentVideo.srcObject =
         localStream;
+        /* =====================
+   WAIT VIDEO READY
+===================== */
+
+studentVideo.onloadedmetadata =
+() => {
+
+    startFaceDetection();
+
+};
 
         createPeerConnection();
 
@@ -788,6 +798,16 @@ if(!faceDetectionStarted){
 ========================= */
 
 async function loadFaceModels(){
+
+    if(typeof faceapi === "undefined"){
+
+        console.log(
+            "FACE API NOT LOADED"
+        );
+
+        return;
+
+    }
 
     try{
 
