@@ -283,7 +283,7 @@ if(
        START CAMERA
     ===================== */
 
-    await startMedia();
+     startMedia();
 };
 
 
