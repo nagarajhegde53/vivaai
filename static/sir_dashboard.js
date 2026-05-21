@@ -1,9 +1,7 @@
 /* =========================================================
-   ADVANCED SIR DASHBOARD
-   FULL FIXED VERSION
-   Compatible with latest viva.js
-   NO ROLLBACK
-   ALL FEATURES INCLUDED
+   ADVANCED SIR_DASHBOARD.JS
+   FULL FEATURE VERSION
+   Compatible with advanced viva.js
 ========================================================= */
 
 
@@ -76,9 +74,9 @@ document.querySelector(
     ".monitor-list"
 );
 
-const connectionLabel =
+const transcriptBox =
 document.getElementById(
-    "connectionLabel"
+    "transcriptBox"
 );
 
 const speakingIndicator =
@@ -86,9 +84,9 @@ document.getElementById(
     "speakingIndicator"
 );
 
-const transcriptBox =
+const connectionLabel =
 document.getElementById(
-    "transcriptBox"
+    "connectionLabel"
 );
 
 
@@ -132,21 +130,19 @@ let reconnecting = false;
 
 let reconnectTimeout = null;
 
+let transcriptHistory = [];
+
 let monitorHistory = [];
 
 let micMuted = false;
-
-let speaking = false;
 
 let analyser = null;
 
 let audioContext = null;
 
-let voiceInterval = null;
+let speaking = false;
 
-let transcriptHistory = [];
-
-let studentStatus = "offline";
+let speakingInterval = null;
 
 
 /* =========================
@@ -167,8 +163,6 @@ const rtcConfig = {
     bundlePolicy:"max-bundle",
 
     rtcpMuxPolicy:"require",
-
-    iceCandidatePoolSize:10,
 
     sdpSemantics:"unified-plan"
 
@@ -216,7 +210,7 @@ async function loadStudents(){
                     ${student.username}
                 </h3>
 
-                <p class="status">
+                <p>
                     ${student.status}
                 </p>
 
@@ -237,10 +231,7 @@ async function loadStudents(){
 
     }catch(err){
 
-        console.log(
-            "Student Load Error",
-            err
-        );
+        console.log(err);
 
     }
 
@@ -253,11 +244,8 @@ async function loadStudents(){
 
 function connectToStudent(roomId){
 
-    selectedRoom = roomId;
-
-    createSystemMessage(
-        "Connecting to student..."
-    );
+    selectedRoom =
+    roomId;
 
     connectSocket();
 
@@ -272,15 +260,13 @@ function connectSocket(){
 
     if(socket){
 
-        socket.onclose = null;
-
         socket.close();
 
     }
 
     const protocol =
 
-    window.location.protocol ===
+    location.protocol ===
     "https:"
 
     ?
@@ -294,50 +280,18 @@ function connectSocket(){
     socket =
     new WebSocket(
 
-        `${protocol}://${window.location.host}/ws/viva/${selectedRoom}`
+        `${protocol}://${location.host}/ws/viva/${selectedRoom}`
 
     );
 
     socket.onopen = () => {
 
-        reconnecting = false;
-
         createSystemMessage(
-            "Connected to viva room"
+            "Connected"
         );
 
         updateConnectionStatus(
             "Connected"
-        );
-
-        setInterval(() => {
-
-            if(
-                socket &&
-                socket.readyState === 1
-            ){
-
-                socket.send(
-
-                    JSON.stringify({
-
-                        type:"ping"
-
-                    })
-
-                );
-
-            }
-
-        }, 20000);
-
-    };
-
-    socket.onerror = (err) => {
-
-        console.log(
-            "Socket Error",
-            err
         );
 
     };
@@ -360,6 +314,12 @@ function connectSocket(){
             }, 3000);
 
         }
+
+    };
+
+    socket.onerror = (err) => {
+
+        console.log(err);
 
     };
 
@@ -388,8 +348,11 @@ function connectSocket(){
             );
 
             createBubble(
+
                 `Q: ${msg.text}`,
+
                 "question"
+
             );
 
         }
@@ -409,42 +372,11 @@ function connectSocket(){
             );
 
             createBubble(
+
                 `A: ${msg.text}`,
+
                 "answer"
-            );
 
-        }
-
-        /* =====================
-           CHAT
-        ===================== */
-
-        if(
-            msg.type ===
-            "chat"
-        ){
-
-            createBubble(
-                msg.text,
-                "question"
-            );
-
-        }
-
-        /* =====================
-           CAMERA
-        ===================== */
-
-        if(
-            msg.type ===
-            "student-camera-on"
-        ){
-
-            studentStatus =
-            "camera-active";
-
-            createSystemMessage(
-                "Student camera active"
             );
 
         }
@@ -532,15 +464,12 @@ function connectSocket(){
                 pendingCandidates = [];
 
                 createSystemMessage(
-                    "Video connected"
+                    "Video Connected"
                 );
 
             }catch(err){
 
-                console.log(
-                    "Offer Error",
-                    err
-                );
+                console.log(err);
 
             }
 
@@ -583,10 +512,7 @@ function connectSocket(){
 
             }catch(err){
 
-                console.log(
-                    "ICE ERROR:",
-                    err
-                );
+                console.log(err);
 
             }
 
@@ -654,30 +580,13 @@ function connectSocket(){
 
         }
 
-        /* =====================
-           LEFT
-        ===================== */
-
-        if(
-            msg.type ===
-            "student-left"
-        ){
-
-            createSystemMessage(
-                "Student disconnected"
-            );
-
-            stopVoice();
-
-        }
-
     };
 
 }
 
 
 /* =========================
-   PEER CONNECTION
+   PEER
 ========================= */
 
 function createPeerConnection(){
@@ -690,73 +599,72 @@ function createPeerConnection(){
     peerConnection.ontrack =
     async (event) => {
 
-        try{
+        const remoteStream =
+        event.streams[0];
 
-            const remoteStream =
-            event.streams[0];
+        /* =====================
+           VIDEO
+        ===================== */
 
-            if(
-                event.track.kind ===
-                "video"
-            ){
+        if(
+            event.track.kind ===
+            "video"
+        ){
 
-                if(
-                    liveVideo.srcObject !==
-                    remoteStream
-                ){
+            liveVideo.srcObject =
+            remoteStream;
 
-                    liveVideo.srcObject =
-                    remoteStream;
+            liveVideo.autoplay =
+            true;
 
-                    liveVideo.autoplay =
-                    true;
+            liveVideo.playsInline =
+            true;
 
-                    liveVideo.playsInline =
-                    true;
+            liveVideo.muted =
+            true;
 
-                    liveVideo.muted =
-                    true;
+            try{
 
-                    await liveVideo.play();
+                await liveVideo.play();
 
-                }
+            }catch(err){
 
-            }
-
-            if(
-                event.track.kind ===
-                "audio"
-            ){
-
-                if(
-                    remoteAudio.srcObject !==
-                    remoteStream
-                ){
-
-                    remoteAudio.srcObject =
-                    remoteStream;
-
-                    remoteAudio.autoplay =
-                    true;
-
-                    remoteAudio.playsInline =
-                    true;
-
-                    remoteAudio.muted =
-                    false;
-
-                    await remoteAudio.play();
-
-                }
+                console.log(err);
 
             }
 
-        }catch(err){
+        }
 
-            console.log(
-                "Track Error",
-                err
-            );
+        /* =====================
+           AUDIO
+        ===================== */
+
+        if(
+            event.track.kind ===
+            "audio"
+        ){
+
+            remoteAudio.srcObject =
+            remoteStream;
+
+            remoteAudio.autoplay =
+            true;
+
+            remoteAudio.playsInline =
+            true;
+
+            remoteAudio.muted =
+            false;
+
+            try{
+
+                await remoteAudio.play();
+
+            }catch(err){
+
+                console.log(err);
+
+            }
 
         }
 
@@ -793,22 +701,13 @@ function createPeerConnection(){
 
 
 /* =========================
-   CONNECT VOICE
+   VOICE CONNECT
 ========================= */
 
 voiceChatBtn.onclick =
 async () => {
 
     try{
-
-        if(
-            !socket ||
-            socket.readyState !== 1
-        ){
-
-            return;
-
-        }
 
         if(!peerConnection){
 
@@ -832,15 +731,7 @@ async () => {
         .mediaDevices
         .getUserMedia({
 
-            audio:{
-
-                echoCancellation:true,
-
-                noiseSuppression:true,
-
-                autoGainControl:true
-
-            }
+            audio:true
 
         });
 
@@ -855,18 +746,15 @@ async () => {
 
         });
 
-        startVoiceActivityDetection();
+        startVoiceDetection();
 
         createSystemMessage(
-            "Voice connected"
+            "Voice Enabled"
         );
 
     }catch(err){
 
-        console.log(
-            "Voice Error",
-            err
-        );
+        console.log(err);
 
     }
 
@@ -874,10 +762,10 @@ async () => {
 
 
 /* =========================
-   VOICE ACTIVITY
+   VOICE DETECTION
 ========================= */
 
-function startVoiceActivityDetection(){
+function startVoiceDetection(){
 
     try{
 
@@ -885,7 +773,8 @@ function startVoiceActivityDetection(){
         new AudioContext();
 
         analyser =
-        audioContext.createAnalyser();
+        audioContext
+        .createAnalyser();
 
         const source =
         audioContext
@@ -905,15 +794,15 @@ function startVoiceActivityDetection(){
             analyser.frequencyBinCount
         );
 
-        if(voiceInterval){
+        if(speakingInterval){
 
             clearInterval(
-                voiceInterval
+                speakingInterval
             );
 
         }
 
-        voiceInterval =
+        speakingInterval =
         setInterval(() => {
 
             analyser
@@ -980,57 +869,13 @@ function startVoiceActivityDetection(){
 
             }
 
-        }, 400);
+        }, 300);
 
     }catch(err){
 
-        console.log(
-            err
-        );
+        console.log(err);
 
     }
-
-}
-
-
-/* =========================
-   MUTE
-========================= */
-
-if(muteVoiceBtn){
-
-    muteVoiceBtn.onclick = () => {
-
-        if(!localStream){
-
-            return;
-
-        }
-
-        micMuted = !micMuted;
-
-        localStream
-        .getAudioTracks()
-        .forEach(track => {
-
-            track.enabled =
-            !micMuted;
-
-        });
-
-        muteVoiceBtn.innerText =
-
-        micMuted
-
-        ?
-
-        "Unmute"
-
-        :
-
-        "Mute";
-
-    };
 
 }
 
@@ -1066,15 +911,41 @@ function stopVoice(){
 
     }
 
-    if(voiceInterval){
+    if(speakingInterval){
 
         clearInterval(
-            voiceInterval
+            speakingInterval
         );
 
     }
 
 }
+
+
+/* =========================
+   MUTE
+========================= */
+
+muteVoiceBtn.onclick = () => {
+
+    if(!localStream){
+
+        return;
+
+    }
+
+    micMuted = !micMuted;
+
+    localStream
+    .getAudioTracks()
+    .forEach(track => {
+
+        track.enabled =
+        !micMuted;
+
+    });
+
+};
 
 
 /* =========================
@@ -1106,8 +977,11 @@ function sendQuestion(){
     );
 
     createBubble(
+
         `Q: ${text}`,
+
         "question"
+
     );
 
     chatInput.value =
@@ -1117,15 +991,11 @@ function sendQuestion(){
 
 
 /* =========================
-   CHAT EVENTS
+   SEND EVENTS
 ========================= */
 
-if(sendBtn){
-
-    sendBtn.onclick =
-    sendQuestion;
-
-}
+sendBtn.onclick =
+sendQuestion;
 
 chatInput.addEventListener(
     "keypress",
@@ -1252,44 +1122,40 @@ function addTranscript(role,text){
 
     }
 
-    if(transcriptBox){
+    transcriptBox.innerHTML =
+    "";
 
-        transcriptBox.innerHTML =
-        "";
+    transcriptHistory.forEach(item => {
 
-        transcriptHistory
-        .forEach(item => {
+        const div =
+        document.createElement(
+            "div"
+        );
 
-            const div =
-            document.createElement(
-                "div"
-            );
+        div.className =
+        "transcript-item";
 
-            div.className =
-            "transcript-item";
+        div.innerHTML = `
 
-            div.innerHTML = `
+            <b>
+                ${item.role}:
+            </b>
 
-                <b>
-                    ${item.role}:
-                </b>
+            ${item.text}
 
-                ${item.text}
+        `;
 
-            `;
+        transcriptBox.appendChild(
+            div
+        );
 
-            transcriptBox
-            .appendChild(div);
-
-        });
-
-    }
+    });
 
 }
 
 
 /* =========================
-   CHAT BUBBLES
+   CHAT
 ========================= */
 
 function createBubble(text,type){
@@ -1316,7 +1182,7 @@ function createBubble(text,type){
 
 
 /* =========================
-   SYSTEM MESSAGE
+   SYSTEM
 ========================= */
 
 function createSystemMessage(text){
@@ -1343,7 +1209,7 @@ function createSystemMessage(text){
 
 
 /* =========================
-   CONNECTION STATUS
+   STATUS
 ========================= */
 
 function updateConnectionStatus(text){
