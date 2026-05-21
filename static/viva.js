@@ -138,6 +138,8 @@ let faceDetectionInterval = null;
 
 let cameraMonitorInterval = null;
 
+let faceModelsLoaded = false;
+
 
 /* =========================
    WEBRTC
@@ -191,10 +193,18 @@ async () => {
     main.style.display =
     "flex";
 
+    const controls =
+    document.querySelector(
+        ".controls"
+    );
 
-      document
-    .querySelector(".controls")
-    .classList.add("show");
+    if(controls){
+
+        controls.classList.add(
+            "show"
+        );
+
+    }
 
     connectSocket();
 
@@ -401,122 +411,6 @@ function connectSocket(){
         }
 
         /* =====================
-           WEBRTC OFFER
-        ===================== */
-if(
-    msg.type ===
-    "webrtc-offer"
-){
-
-    try{
-
-        /* =================
-           CREATE PEER
-        ================= */
-
-        if(!peerConnection){
-
-            createPeerConnection();
-
-        }
-
-        /* =================
-           SET REMOTE
-        ================= */
-
-        if(
-            !peerConnection.remoteDescription
-        ){
-
-            await peerConnection
-            .setRemoteDescription(
-
-                new RTCSessionDescription(
-                    msg.offer
-                )
-
-            );
-
-        }
-
-        /* =================
-           APPLY ICE
-        ================= */
-
-        for(
-            const candidate
-            of pendingCandidates
-        ){
-
-            try{
-
-                await peerConnection
-                .addIceCandidate(
-
-                    new RTCIceCandidate(
-                        candidate
-                    )
-
-                );
-
-            }catch(err){
-
-                console.log(err);
-
-            }
-
-        }
-
-        pendingCandidates = [];
-
-        /* =================
-           CREATE ANSWER
-        ================= */
-
-        const answer =
-
-        await peerConnection
-        .createAnswer();
-
-        await peerConnection
-        .setLocalDescription(
-            answer
-        );
-
-        /* =================
-           SEND ANSWER
-        ================= */
-
-        socket.send(
-
-            JSON.stringify({
-
-                type:
-                "webrtc-answer",
-
-                answer:
-                peerConnection.localDescription
-
-            })
-
-        );
-
-        createSystemMessage(
-            "WebRTC connected"
-        );
-
-    }catch(err){
-
-        console.log(
-            "Offer Error",
-            err
-        );
-
-    }
-
-}
-
-        /* =====================
            ICE
         ===================== */
 
@@ -553,7 +447,52 @@ if(
 
             }catch(err){
 
-                console.log(err);
+                console.log(
+                    "ICE ERROR:",
+                    err
+                );
+
+            }
+
+        }
+
+        /* =====================
+           WEBRTC ANSWER
+        ===================== */
+
+        if(
+            msg.type ===
+            "webrtc-answer"
+        ){
+
+            try{
+
+                if(
+                    peerConnection &&
+                    !peerConnection.currentRemoteDescription
+                ){
+
+                    await peerConnection
+                    .setRemoteDescription(
+
+                        new RTCSessionDescription(
+                            msg.answer
+                        )
+
+                    );
+
+                    createSystemMessage(
+                        "Video connected"
+                    );
+
+                }
+
+            }catch(err){
+
+                console.log(
+                    "Answer Error",
+                    err
+                );
 
             }
 
@@ -738,6 +677,10 @@ async function startMedia(){
             offer
         );
 
+        /* =====================
+           SEND OFFER
+        ===================== */
+
         if(
             socket &&
             socket.readyState === 1
@@ -759,6 +702,10 @@ async function startMedia(){
 
         }
 
+        /* =====================
+           START MONITORING
+        ===================== */
+
         studentVideo.onloadedmetadata =
         () => {
 
@@ -767,6 +714,10 @@ async function startMedia(){
             monitorCamera();
 
         };
+
+        /* =====================
+           CAMERA STATUS
+        ===================== */
 
         if(
             socket &&
@@ -812,6 +763,10 @@ function createPeerConnection(){
         rtcConfig
     );
 
+    /* =====================
+       RECEIVE AUDIO
+    ===================== */
+
     peerConnection.ontrack =
     async (event) => {
 
@@ -821,43 +776,57 @@ function createPeerConnection(){
             event.streams[0];
 
             if(
-                remoteAudio.srcObject ===
-                remoteStream
+                event.track.kind ===
+                "audio"
             ){
 
-                return;
+                if(
+                    remoteAudio.srcObject ===
+                    remoteStream
+                ){
 
-            }
+                    return;
 
-            remoteAudio.srcObject =
-            remoteStream;
+                }
 
-            remoteAudio.autoplay =
-            true;
+                remoteAudio.srcObject =
+                remoteStream;
 
-            remoteAudio.playsInline =
-            true;
+                remoteAudio.autoplay =
+                true;
 
-            remoteAudio.muted =
-            false;
+                remoteAudio.playsInline =
+                true;
 
-            try{
+                remoteAudio.muted =
+                false;
 
-                await remoteAudio.play();
+                try{
 
-            }catch(err){
+                    await remoteAudio.play();
 
-                console.log(err);
+                }catch(err){
+
+                    console.log(err);
+
+                }
 
             }
 
         }catch(err){
 
-            console.log(err);
+            console.log(
+                "Track Error",
+                err
+            );
 
         }
 
     };
+
+    /* =====================
+       ICE
+    ===================== */
 
     peerConnection.onicecandidate =
     (event) => {
@@ -892,11 +861,6 @@ function createPeerConnection(){
 /* =========================
    LOAD FACE MODELS
 ========================= */
-/* =========================
-   LOAD FACE MODELS
-========================= */
-
-let faceModelsLoaded = false;
 
 async function loadFaceModels(){
 
@@ -946,17 +910,6 @@ async function loadFaceModels(){
 }
 
 
-/* =========================
-   FACE DETECTION
-========================= */
-// const loaded =
-// await loadFaceModels();
-
-// if(!loaded){
-
-//     return;
-
-// }
 /* =========================
    FACE DETECTION
 ========================= */
@@ -1077,6 +1030,8 @@ async function startFaceDetection(){
     }
 
 }
+
+
 /* =========================
    CAMERA MONITOR
 ========================= */
@@ -1232,6 +1187,10 @@ if(
 
             );
 
+            /* =====================
+               SEND ANSWER
+            ===================== */
+
             if(
                 socket &&
                 socket.readyState === 1
@@ -1289,7 +1248,7 @@ if(
                 await res.json();
 
                 console.log(
-                    "LIVE ANALYSIS RESPONSE:",
+                    "LIVE ANALYSIS:",
                     data
                 );
 
@@ -1527,8 +1486,6 @@ async () => {
 
         const data =
         await res.json();
-
-        console.log(data);
 
         if(data.success){
 
