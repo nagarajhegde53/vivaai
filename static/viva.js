@@ -949,108 +949,134 @@ async function loadFaceModels(){
 /* =========================
    FACE DETECTION
 ========================= */
-const loaded =
-await loadFaceModels();
+// const loaded =
+// await loadFaceModels();
 
-if(!loaded){
+// if(!loaded){
 
-    return;
+//     return;
 
-}
+// }
+/* =========================
+   FACE DETECTION
+========================= */
+
 async function startFaceDetection(){
 
-    await loadFaceModels();
+    try{
 
-    if(faceDetectionInterval){
+        const loaded =
+        await loadFaceModels();
 
-        clearInterval(
-            faceDetectionInterval
-        );
-
-    }
-
-    faceDetectionInterval =
-    setInterval(async () => {
-
-        try{
-
-            if(
-                !studentVideo ||
-                studentVideo.readyState < 2
-            ){
-
-                return;
-
-            }
-if(!faceModelsLoaded){
-
-    return;
-
-}
-            const detection =
-
-            await faceapi
-            .detectSingleFace(
-
-                studentVideo,
-
-                new faceapi
-                .TinyFaceDetectorOptions()
-
-            )
-            .withFaceLandmarks();
-
-            if(!detection){
-
-                sendCheatingAlert(
-                    "Face not visible"
-                );
-
-                return;
-            }
-
-            const nose =
-            detection.landmarks
-            .getNose()[3];
-
-            if(nose.x < 220){
-
-                sendCheatingAlert(
-                    "Looking left"
-                );
-
-            }
-
-            if(nose.x > 420){
-
-                sendCheatingAlert(
-                    "Looking right"
-                );
-
-            }
-
-            if(nose.y > 260){
-
-                sendCheatingAlert(
-                    "Looking downward"
-                );
-
-            }
-
-        }catch(err){
+        if(!loaded){
 
             console.log(
-                "FACE DETECTION ERROR:",
-                err
+                "Face models failed"
+            );
+
+            return;
+
+        }
+
+        if(faceDetectionInterval){
+
+            clearInterval(
+                faceDetectionInterval
             );
 
         }
 
-    }, 4000);
+        faceDetectionInterval =
+        setInterval(async () => {
+
+            try{
+
+                if(
+                    !studentVideo ||
+                    studentVideo.readyState < 2
+                ){
+
+                    return;
+
+                }
+
+                if(!faceModelsLoaded){
+
+                    return;
+
+                }
+
+                const detection =
+
+                await faceapi
+                .detectSingleFace(
+
+                    studentVideo,
+
+                    new faceapi
+                    .TinyFaceDetectorOptions()
+
+                )
+                .withFaceLandmarks();
+
+                if(!detection){
+
+                    sendCheatingAlert(
+                        "Face not visible"
+                    );
+
+                    return;
+                }
+
+                const nose =
+                detection.landmarks
+                .getNose()[3];
+
+                if(nose.x < 220){
+
+                    sendCheatingAlert(
+                        "Looking left"
+                    );
+
+                }
+
+                if(nose.x > 420){
+
+                    sendCheatingAlert(
+                        "Looking right"
+                    );
+
+                }
+
+                if(nose.y > 260){
+
+                    sendCheatingAlert(
+                        "Looking downward"
+                    );
+
+                }
+
+            }catch(err){
+
+                console.log(
+                    "FACE DETECTION ERROR:",
+                    err
+                );
+
+            }
+
+        }, 4000);
+
+    }catch(err){
+
+        console.log(
+            "FACE INIT ERROR:",
+            err
+        );
+
+    }
 
 }
-
-
 /* =========================
    CAMERA MONITOR
 ========================= */
