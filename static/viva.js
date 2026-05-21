@@ -200,11 +200,9 @@ async () => {
         controls.classList.add(
             "show"
         );
+await connectSocket();
 
-        connectSocket();
-
-        await startCamera();
-
+await startCamera();
     }catch(err){
 
         console.log(err);
@@ -217,222 +215,229 @@ async () => {
 /* =========================
    SOCKET
 ========================= */
+async function connectSocket(){
 
-function connectSocket(){
+    return new Promise((resolve,reject) => {
 
-    const protocol =
+        const protocol =
 
-    location.protocol ===
-    "https:"
+        location.protocol ===
+        "https:"
 
-    ?
+        ?
 
-    "wss"
+        "wss"
 
-    :
+        :
 
-    "ws";
+        "ws";
 
-    socket =
-    new WebSocket(
+        socket =
+        new WebSocket(
 
-        `${protocol}://${location.host}/ws/viva/${user.room_id}`
+            `${protocol}://${location.host}/ws/viva/${user.room_id}`
 
-    );
-
-    socket.onopen = () => {
-
-        reconnecting = false;
-
-        updateSocketStatus(
-            true
         );
 
-        createSystemMessage(
-            "Connected"
-        );
+        socket.onopen = () => {
 
-        console.log(
-            "Connected"
-        );
+            reconnecting = false;
 
-    };
-
-    socket.onclose = () => {
-
-        updateSocketStatus(
-            false
-        );
-
-        if(!reconnecting){
-
-            reconnecting = true;
-
-            reconnectTimeout =
-            setTimeout(() => {
-
-                connectSocket();
-
-            }, 3000);
-
-        }
-
-    };
-
-    socket.onerror = (err) => {
-
-        console.log(err);
-
-    };
-
-    socket.onmessage =
-    async (event) => {
-
-        const msg =
-        JSON.parse(
-            event.data
-        );
-
-        console.log(msg);
-
-        /* =====================
-           QUESTION
-        ===================== */
-
-        if(
-            msg.type ===
-            "question"
-        ){
-
-            tempQuestion =
-            msg.text;
-
-            createBubble(
-
-                `Professor: ${msg.text}`,
-
-                "question"
-
+            updateSocketStatus(
+                true
             );
 
-        }
-
-        /* =====================
-           CHAT
-        ===================== */
-
-        if(
-            msg.type ===
-            "chat"
-        ){
-
-            createBubble(
-
-                msg.text,
-
-                "question"
-
+            createSystemMessage(
+                "Connected"
             );
 
-        }
+            console.log(
+                "Connected"
+            );
 
-        /* =====================
-           MIC REQUEST
-        ===================== */
+            resolve();
 
-        if(
-            msg.type ===
-            "sir-mic-on"
-        ){
+        };
 
-            voicePopup.style.display =
-            "flex";
+        socket.onerror = (err) => {
 
-        }
+            console.log(err);
 
-        /* =====================
-           ANSWER
-        ===================== */
+            reject(err);
 
-        if(
-            msg.type ===
-            "webrtc-answer"
-        ){
+        };
 
-            try{
+        socket.onclose = () => {
 
-                if(
-                    peerConnection &&
-                    !peerConnection.currentRemoteDescription
-                ){
+            updateSocketStatus(
+                false
+            );
 
-                    await peerConnection
-                    .setRemoteDescription(
+            if(!reconnecting){
 
-                        new RTCSessionDescription(
-                            msg.answer
-                        )
+                reconnecting = true;
 
-                    );
+                reconnectTimeout =
+                setTimeout(() => {
 
-                    createSystemMessage(
-                        "Video Connected"
-                    );
+                    connectSocket();
 
-                }
-
-            }catch(err){
-
-                console.log(err);
+                }, 3000);
 
             }
 
-        }
+        };
 
-        /* =====================
-           ICE
-        ===================== */
+        socket.onmessage =
+        async (event) => {
 
-        if(
-            msg.type ===
-            "ice-candidate"
-        ){
+            const msg =
+            JSON.parse(
+                event.data
+            );
 
-            try{
+            console.log(msg);
 
-                if(
-                    peerConnection &&
-                    peerConnection.remoteDescription
-                ){
+            /* =====================
+               QUESTION
+            ===================== */
 
-                    await peerConnection
-                    .addIceCandidate(
+            if(
+                msg.type ===
+                "question"
+            ){
 
-                        new RTCIceCandidate(
+                tempQuestion =
+                msg.text;
+
+                createBubble(
+
+                    `Professor: ${msg.text}`,
+
+                    "question"
+
+                );
+
+            }
+
+            /* =====================
+               CHAT
+            ===================== */
+
+            if(
+                msg.type ===
+                "chat"
+            ){
+
+                createBubble(
+
+                    msg.text,
+
+                    "question"
+
+                );
+
+            }
+
+            /* =====================
+               MIC REQUEST
+            ===================== */
+
+            if(
+                msg.type ===
+                "sir-mic-on"
+            ){
+
+                voicePopup.style.display =
+                "flex";
+
+            }
+
+            /* =====================
+               ANSWER
+            ===================== */
+
+            if(
+                msg.type ===
+                "webrtc-answer"
+            ){
+
+                try{
+
+                    if(
+                        peerConnection &&
+                        !peerConnection.currentRemoteDescription
+                    ){
+
+                        await peerConnection
+                        .setRemoteDescription(
+
+                            new RTCSessionDescription(
+                                msg.answer
+                            )
+
+                        );
+
+                        createSystemMessage(
+                            "Video Connected"
+                        );
+
+                    }
+
+                }catch(err){
+
+                    console.log(err);
+
+                }
+
+            }
+
+            /* =====================
+               ICE
+            ===================== */
+
+            if(
+                msg.type ===
+                "ice-candidate"
+            ){
+
+                try{
+
+                    if(
+                        peerConnection &&
+                        peerConnection.remoteDescription
+                    ){
+
+                        await peerConnection
+                        .addIceCandidate(
+
+                            new RTCIceCandidate(
+                                msg.candidate
+                            )
+
+                        );
+
+                    }
+
+                    else{
+
+                        pendingCandidates.push(
                             msg.candidate
-                        )
+                        );
 
-                    );
+                    }
 
-                }
+                }catch(err){
 
-                else{
-
-                    pendingCandidates.push(
-                        msg.candidate
-                    );
+                    console.log(err);
 
                 }
-
-            }catch(err){
-
-                console.log(err);
 
             }
 
-        }
+        };
 
-    };
+    });
 
 }
 
