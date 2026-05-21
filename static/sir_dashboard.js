@@ -505,6 +505,20 @@ function connectSocket(){
             );
 
         }
+        /* =====================
+   CHEATING ALERT
+===================== */
+
+if(
+    msg.type ===
+    "cheating-alert"
+){
+
+    addWarning(
+        msg.text
+    );
+
+}
 
         /* =====================
            STUDENT CAMERA
@@ -1493,22 +1507,110 @@ function createSystemMessage(text){
 // update ui
 function updateAIAnalysis(data){
 
+    console.log(
+        "AI ANALYSIS:",
+        data
+    );
+
+    const confidenceBar =
     document.getElementById(
         "confidenceBar"
-    ).style.width =
+    );
 
-    data.confidence + "%";
-
+    const communicationBar =
     document.getElementById(
         "communicationBar"
-    ).style.width =
+    );
 
-    data.communication + "%";
-
+    const understandingBar =
     document.getElementById(
         "understandingBar"
-    ).style.width =
+    );
 
-    data.understanding + "%";
+    // SCORE -> CONFIDENCE
+
+    if(confidenceBar){
+
+        confidenceBar.style.width =
+
+        (
+            data.score ||
+
+            data.confidence ||
+
+            0
+
+        ) + "%";
+
+    }
+
+    // COMMUNICATION
+
+    if(communicationBar){
+
+        communicationBar.style.width =
+
+        (
+            data.communication ||
+
+            0
+
+        ) + "%";
+
+    }
+
+    // CRITICAL -> UNDERSTANDING
+
+    if(understandingBar){
+
+        understandingBar.style.width =
+
+        (
+            data.critical ||
+
+            data.understanding ||
+
+            0
+
+        ) + "%";
+
+    }
+
+}
+
+
+
+/* =========================
+   ADD WARNING
+========================= */
+
+function addWarning(text){
+
+   const monitorSection =
+
+document.querySelector(
+    ".monitor-list"
+);
+
+    if(!monitorSection){
+
+        return;
+
+    }
+
+    const div =
+    document.createElement(
+        "div"
+    );
+
+    div.className =
+    "warning";
+
+    div.innerText =
+    "⚠ " + text;
+
+    monitorSection.appendChild(
+        div
+    );
 
 }

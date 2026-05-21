@@ -1099,9 +1099,15 @@ async def live_analysis(request: Request):
 
     data = await request.json()
 
-    answer = data.get("answer","")
+    answer = data.get(
+        "answer",
+        ""
+    )
 
-    question = data.get("question","")
+    question = data.get(
+        "question",
+        ""
+    )
 
     prompt = f"""
 
@@ -1113,7 +1119,13 @@ Question:
 Answer:
 {answer}
 
-Return ONLY JSON:
+Return ONLY valid JSON.
+
+NO markdown.
+NO explanation.
+NO extra text.
+
+FORMAT:
 
 {{
     "confidence":0,
@@ -1127,48 +1139,96 @@ Return ONLY JSON:
 
         res = client.chat.completions.create(
 
-            model="llama3-8b-8192",
+            model=
+            "llama-3.1-8b-instant",
 
             messages=[
 
                 {
+                    "role":"system",
+
+                    "content":"""
+
+You are a JSON API.
+
+Return ONLY valid JSON.
+
+"""
+                },
+
+                {
                     "role":"user",
-                    "content":prompt
+
+                    "content":
+                    prompt
                 }
 
-            ]
+            ],
+
+            temperature=0.2,
+
+            max_tokens=120
 
         )
 
         text = (
             res.choices[0]
             .message.content
+            .strip()
+        )
+
+        print(
+            "LIVE AI RAW:",
+            text
         )
 
         match = re.search(
+
             r"\{[\s\S]*\}",
+
             text
+
         )
+
+        if not match:
+
+            return {
+
+                "success": False,
+
+                "message":
+                "Invalid AI response"
+
+            }
 
         result = json.loads(
             match.group(0)
         )
 
+        print(
+            "LIVE AI PARSED:",
+            result
+        )
+
         return {
 
-            "success":True,
+            "success": True,
 
-            "analysis":result
+            "analysis": result
 
         }
 
     except Exception as e:
 
+        import traceback
+
+        traceback.print_exc()
+
         print(e)
 
         return {
 
-            "success":False
+            "success": False
 
         }
 

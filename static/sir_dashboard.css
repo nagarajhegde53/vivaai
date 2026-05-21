@@ -541,3 +541,15 @@ textarea{
     display:block;
 
 }
+
+
+
+#confidenceBar,
+#communicationBar,
+#understandingBar{
+
+    width:0%;
+
+    transition:0.5s ease;
+
+}

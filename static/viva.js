@@ -135,7 +135,55 @@ let currentBubbleA = null;
 let qaList = [];
 
 let muted = false;
+/* =========================
+   CHEATING DETECTION
+========================= */
 
+let lastAlert = 0;
+
+function sendCheatingAlert(message){
+
+    const now = Date.now();
+
+    // PREVENT SPAM
+
+    if(
+        now - lastAlert < 5000
+    ){
+
+        return;
+
+    }
+
+    lastAlert = now;
+
+    console.log(
+        "CHEATING:",
+        message
+    );
+
+    if(
+        socket &&
+        socket.readyState === 1
+    ){
+
+        socket.send(
+
+            JSON.stringify({
+
+                type:
+                "cheating-alert",
+
+                text:
+                message
+
+            })
+
+        );
+
+    }
+
+}
 
 /* =========================
    WEBRTC
@@ -187,6 +235,19 @@ startBtn.onclick = () => {
 
     main.style.display =
     "flex";
+    /* =====================
+   START FULLSCREEN
+===================== */
+
+if(
+    document.documentElement
+    .requestFullscreen
+){
+
+    document.documentElement
+    .requestFullscreen();
+
+}
 
     main.style.visibility =
     "visible";
@@ -1432,6 +1493,57 @@ function goBack(){
 
 }
 
+
+/* =========================
+   TAB SWITCH DETECTION
+========================= */
+
+document.addEventListener(
+
+    "visibilitychange",
+
+    () => {
+
+        if(document.hidden){
+
+            sendCheatingAlert(
+
+                "Tab switching detected"
+
+            );
+
+        }
+
+    }
+
+);
+
+
+/* =========================
+   FULLSCREEN EXIT DETECTION
+========================= */
+
+document.addEventListener(
+
+    "fullscreenchange",
+
+    () => {
+
+        if(
+            !document.fullscreenElement
+        ){
+
+            sendCheatingAlert(
+
+                "Fullscreen exited"
+
+            );
+
+        }
+
+    }
+
+);
 
 /* =========================
    CLEANUP
