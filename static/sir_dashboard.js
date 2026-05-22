@@ -681,18 +681,9 @@ async function connectSocket(){
 /* =========================
    AUDIO INIT
 ========================= */
-
-async function initializeProfessorAudio(){
+async function startProfessorVoice(){
 
     try{
-
-        if(professorAudioTrack){
-
-            professorAudioTrack.enabled =
-            !muted;
-
-            return;
-        }
 
         professorAudioStream =
         await navigator
@@ -708,47 +699,43 @@ async function initializeProfessorAudio(){
         .getAudioTracks()[0];
 
         professorAudioTrack.enabled =
-        !muted;
+        true;
+
+        if(!peerConnection){
+
+            return;
+        }
+
+        peerConnection.addTrack(
+
+            professorAudioTrack,
+
+            professorAudioStream
+
+        );
 
         /*
-        ADD TRACK
+        IMPORTANT
         */
 
-        if(peerConnection){
+        const offer =
 
-            const alreadyAdded =
+        await peerConnection
+        .createOffer();
 
-            peerConnection
-            .getSenders()
-            .some(sender => {
+        await peerConnection
+        .setLocalDescription(
+            offer
+        );
 
-                return (
-                    sender.track &&
-                    sender.track.kind ===
-                    "audio"
-                );
+        sendSocket({
 
-            });
+            type:"webrtc-answer",
 
-            if(!alreadyAdded){
+            answer:
+            peerConnection.localDescription
 
-                peerConnection.addTrack(
-
-                    professorAudioTrack,
-
-                    professorAudioStream
-
-                );
-
-                /*
-                IMPORTANT FIX
-                */
-
-                renegotiateConnection();
-
-            }
-
-        }
+        });
 
     }catch(err){
 
@@ -757,7 +744,6 @@ async function initializeProfessorAudio(){
     }
 
 }
-
 
 /* =========================
    RENEGOTIATE
@@ -1069,9 +1055,8 @@ async () => {
 
     voiceStarted =
     true;
-
-    await initializeProfessorAudio();
-
+await initializeProfessorAudio();
+    
     remoteAudio.volume =
     1;
 
@@ -1121,6 +1106,32 @@ endVoiceBtn.onclick =
     );
 
 };
+
+
+// new 
+if(professorAudioTrack){
+
+    professorAudioTrack.stop();
+
+    professorAudioTrack =
+    null;
+
+}
+
+if(professorAudioStream){
+
+    professorAudioStream
+    .getTracks()
+    .forEach(track => {
+
+        track.stop();
+
+    });
+
+    professorAudioStream =
+    null;
+
+}
 
 
 /* =========================

@@ -444,17 +444,35 @@ async function connectSocket(){
 
             if(
                 msg.type ===
-                "disconnect-voice"
+                ""
             ){
-
+disconnect-voice
                 voiceStarted =
                 false;
 
                 if(localAudioTrack){
 
-                    localAudioTrack.enabled =
-                    false;
+                    if(localAudioTrack){
 
+    localAudioTrack.stop();
+
+    localAudioTrack = null;
+
+}
+
+if(localAudioStream){
+
+    localAudioStream
+    .getTracks()
+    .forEach(track => {
+
+        track.stop();
+
+    });
+
+    localAudioStream = null;
+
+}
                 }
 
             }
