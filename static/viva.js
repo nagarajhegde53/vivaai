@@ -1,7 +1,8 @@
 /* =========================================================
    FINAL ADVANCED viva.js
-   FULLY FIXED VERSION
-   NO BASIC VERSION
+   FULLY FIXED
+   NO ROLLBACK
+   FULL ADVANCED VERSION
    COMPATIBLE WITH:
    - YOUR HTML
    - YOUR CSS
@@ -156,6 +157,8 @@ let faceModelsLoaded = false;
 
 let alreadyConnected = false;
 
+let makingOffer = false;
+
 
 /* =========================
    RTC CONFIG
@@ -171,6 +174,8 @@ const rtcConfig = {
         }
 
     ],
+
+    iceCandidatePoolSize:10,
 
     bundlePolicy:"max-bundle",
 
@@ -259,10 +264,6 @@ async function connectSocket(){
 
             }
 
-            console.log(
-                "Connected"
-            );
-
             resolve();
 
         };
@@ -304,7 +305,10 @@ async function connectSocket(){
                 event.data
             );
 
-            console.log(msg);
+            console.log(
+                "SOCKET:",
+                msg
+            );
 
             /* =====================
                QUESTION
@@ -362,7 +366,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               WEBRTC ANSWER
+               ANSWER
             ===================== */
 
             if(
@@ -373,17 +377,27 @@ async function connectSocket(){
                 try{
 
                     if(
-                        peerConnection &&
-                        !peerConnection.currentRemoteDescription
+                        !peerConnection
+                    ){
+
+                        return;
+
+                    }
+
+                    const answerDesc =
+
+                    new RTCSessionDescription(
+                        msg.answer
+                    );
+
+                    if(
+                        !peerConnection
+                        .currentRemoteDescription
                     ){
 
                         await peerConnection
                         .setRemoteDescription(
-
-                            new RTCSessionDescription(
-                                msg.answer
-                            )
-
+                            answerDesc
                         );
 
                         createSystemMessage(
@@ -394,7 +408,10 @@ async function connectSocket(){
 
                 }catch(err){
 
-                    console.log(err);
+                    console.log(
+                        "ANSWER ERROR:",
+                        err
+                    );
 
                 }
 
@@ -413,7 +430,8 @@ async function connectSocket(){
 
                     if(
                         peerConnection &&
-                        peerConnection.remoteDescription
+                        peerConnection
+                        .remoteDescription
                     ){
 
                         await peerConnection
@@ -437,7 +455,10 @@ async function connectSocket(){
 
                 }catch(err){
 
-                    console.log(err);
+                    console.log(
+                        "ICE ERROR:",
+                        err
+                    );
 
                 }
 
@@ -463,7 +484,10 @@ async function startCamera(){
         .mediaDevices
         .getUserMedia({
 
-            video:true,
+            video:{
+                width:1280,
+                height:720
+            },
 
             audio:false
 
@@ -471,6 +495,12 @@ async function startCamera(){
 
         studentVideo.srcObject =
         localStream;
+
+        studentVideo.muted =
+        true;
+
+        studentVideo.playsInline =
+        true;
 
         await studentVideo.play();
 
@@ -487,40 +517,12 @@ async function startCamera(){
 
         });
 
-        const offer =
-
-        await peerConnection
-        .createOffer({
-
-            offerToReceiveAudio:true,
-
-            offerToReceiveVideo:true
-
-        });
-
-        await peerConnection
-        .setLocalDescription(
-            offer
-        );
+        await createAndSendOffer();
 
         if(
             socket &&
             socket.readyState === 1
         ){
-
-            socket.send(
-
-                JSON.stringify({
-
-                    type:
-                    "webrtc-offer",
-
-                    offer:
-                    peerConnection.localDescription
-
-                })
-
-            );
 
             socket.send(
 
@@ -552,6 +554,116 @@ async function startCamera(){
 
 
 /* =========================
+   CREATE OFFER
+========================= */
+
+async function createAndSendOffer(){
+
+    try{
+
+        if(makingOffer){
+
+            return;
+
+        }
+
+        makingOffer = true;
+
+        const offer =
+
+        await peerConnection
+        .createOffer();
+
+        await peerConnection
+        .setLocalDescription(
+            offer
+        );
+
+        /* =====================
+           WAIT ICE COMPLETE
+        ===================== */
+
+        await new Promise(resolve => {
+
+            if(
+                peerConnection
+                .iceGatheringState ===
+                "complete"
+            ){
+
+                resolve();
+
+            }
+
+            else{
+
+                function checkState(){
+
+                    if(
+                        peerConnection
+                        .iceGatheringState ===
+                        "complete"
+                    ){
+
+                        peerConnection
+                        .removeEventListener(
+
+                            "icegatheringstatechange",
+
+                            checkState
+
+                        );
+
+                        resolve();
+
+                    }
+
+                }
+
+                peerConnection
+                .addEventListener(
+
+                    "icegatheringstatechange",
+
+                    checkState
+
+                );
+
+            }
+
+        });
+
+        socket.send(
+
+            JSON.stringify({
+
+                type:
+                "webrtc-offer",
+
+                offer:
+                peerConnection.localDescription
+
+            })
+
+        );
+
+        makingOffer = false;
+
+    }catch(err){
+
+        makingOffer = false;
+
+        console.log(
+            "OFFER ERROR:",
+            err
+        );
+
+    }
+
+}
+
+
+/* =========================
    PEER CONNECTION
 ========================= */
 
@@ -562,11 +674,48 @@ function createPeerConnection(){
         rtcConfig
     );
 
+    peerConnection.onconnectionstatechange =
+    () => {
+
+        console.log(
+
+            "CONNECTION:",
+
+            peerConnection
+            .connectionState
+
+        );
+
+    };
+
+    peerConnection.oniceconnectionstatechange =
+    () => {
+
+        console.log(
+
+            "ICE:",
+
+            peerConnection
+            .iceConnectionState
+
+        );
+
+    };
+
     peerConnection.ontrack =
     async (event) => {
 
+        console.log(
+            "TRACK:",
+            event.track.kind
+        );
+
         const remoteStream =
         event.streams[0];
+
+        /* =====================
+           AUDIO
+        ===================== */
 
         if(
             event.track.kind ===
@@ -585,15 +734,15 @@ function createPeerConnection(){
             remoteAudio.muted =
             false;
 
-            try{
+            remoteAudio.play()
+            .catch(err => {
 
-                await remoteAudio.play();
+                console.log(
+                    "AUDIO BLOCKED:",
+                    err
+                );
 
-            }catch(err){
-
-                console.log(err);
-
-            }
+            });
 
         }
 
@@ -672,6 +821,8 @@ async () => {
             audioTrack,
             localStream
         );
+
+        await createAndSendOffer();
 
         createSystemMessage(
             "Microphone Enabled"
@@ -865,7 +1016,8 @@ function startMonitoring(){
 
         const tracks =
 
-        localStream.getVideoTracks();
+        localStream
+        .getVideoTracks();
 
         if(
             tracks.length === 0
@@ -887,8 +1039,6 @@ function startMonitoring(){
 ========================= */
 
 function sendCheatingAlert(text){
-
-    console.log(text);
 
     if(
         socket &&
@@ -1017,11 +1167,6 @@ if(
 
             const data =
             await res.json();
-
-            console.log(
-                "LIVE AI:",
-                data
-            );
 
             if(
                 data.success &&
@@ -1305,7 +1450,7 @@ function createBubble(text,type){
 
 
 /* =========================
-   SYSTEM MESSAGE
+   SYSTEM
 ========================= */
 
 function createSystemMessage(text){
