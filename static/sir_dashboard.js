@@ -1,9 +1,9 @@
 /* =========================================================
-   FINAL ADVANCED sir_dashboard.js
-   FULLY FIXED
+   FINAL PRODUCTION sir_dashboard.js
+   ADVANCED + STABLE + LOW LATENCY
    MOBILE + DESKTOP COMPATIBLE
-   NO FEATURE REMOVED
-   BACKEND + HTML + CSS COMPATIBLE
+   NO FEATURES REMOVED
+   SINGLE NEGOTIATION ARCHITECTURE
 ========================================================= */
 
 
@@ -129,11 +129,15 @@ let selectedRoom = null;
 
 let peerConnection = null;
 
-let pendingCandidates = [];
+let professorStream = null;
+
+let professorAudioTrack = null;
 
 let reconnecting = false;
 
 let reconnectTimeout = null;
+
+let pendingCandidates = [];
 
 let monitorHistory = [];
 
@@ -143,17 +147,15 @@ let recognition = null;
 
 let currentStudents = [];
 
+let voiceModeEnabled = false;
+
+let muted = false;
+
 let alreadyConnected = false;
 
 let makingAnswer = false;
 
-let professorStream = null;
-
-let professorAudioTrack = null;
-
-let voiceModeEnabled = false;
-
-let muted = false;
+let recognizing = false;
 
 
 /* =========================
@@ -171,8 +173,6 @@ const rtcConfig = {
 
     ],
 
-    iceCandidatePoolSize:10,
-
     bundlePolicy:"max-bundle",
 
     rtcpMuxPolicy:"require",
@@ -183,7 +183,7 @@ const rtcConfig = {
 
 
 /* =========================
-   INIT PROFESSOR AUDIO
+   PROFESSOR AUDIO
 ========================= */
 
 async function initProfessorAudio(){
@@ -204,11 +204,19 @@ async function initProfessorAudio(){
         .getAudioTracks()[0];
 
         /* =====================
-           START MUTED
+           NEGOTIATE FIRST
         ===================== */
 
-        professorAudioTrack.enabled =
-        false;
+        setTimeout(() => {
+
+            if(professorAudioTrack){
+
+                professorAudioTrack.enabled =
+                false;
+
+            }
+
+        }, 3000);
 
     }catch(err){
 
@@ -351,13 +359,16 @@ async function connectToStudent(roomId){
 
 async function connectSocket(){
 
+    if(
+        socket &&
+        socket.readyState === 1
+    ){
+
+        return;
+
+    }
+
     return new Promise((resolve,reject) => {
-
-        if(socket){
-
-            socket.close();
-
-        }
 
         const protocol =
 
@@ -415,18 +426,38 @@ async function connectSocket(){
                 false
             );
 
-            if(!reconnecting){
+            if(reconnecting){
 
-                reconnecting = true;
-
-                reconnectTimeout =
-                setTimeout(() => {
-
-                    connectSocket();
-
-                }, 3000);
+                return;
 
             }
+
+            reconnecting = true;
+
+            clearTimeout(
+                reconnectTimeout
+            );
+
+            reconnectTimeout =
+            setTimeout(async () => {
+
+                try{
+
+                    if(selectedRoom){
+
+                        await connectSocket();
+
+                    }
+
+                }catch(err){
+
+                    console.log(err);
+
+                }
+
+                reconnecting = false;
+
+            }, 4000);
 
         };
 
@@ -442,10 +473,6 @@ async function connectSocket(){
                 "SOCKET:",
                 msg
             );
-
-            /* =====================
-               SELF FILTER
-            ===================== */
 
             if(
                 msg.senderId ===
@@ -489,7 +516,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               LIVE ANALYSIS
+               ANALYSIS
             ===================== */
 
             if(
@@ -504,7 +531,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               CHEATING ALERT
+               CHEATING
             ===================== */
 
             if(
@@ -519,7 +546,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               CAMERA ACTIVE
+               CAMERA
             ===================== */
 
             if(
@@ -534,7 +561,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               WEBRTC OFFER
+               OFFER
             ===================== */
 
             if(
@@ -586,32 +613,15 @@ async function connectSocket(){
                         answer
                     );
 
-                    await waitForIceComplete();
+                    sendSocket({
 
-                    if(
-                        socket &&
-                        socket.readyState === 1
-                    ){
+                        type:
+                        "webrtc-answer",
 
-                        socket.send(
+                        answer:
+                        peerConnection.localDescription
 
-                            JSON.stringify({
-
-                                senderId:
-                                mySocketId,
-
-                                type:
-                                "webrtc-answer",
-
-                                answer:
-                                peerConnection
-                                .localDescription
-
-                            })
-
-                        );
-
-                    }
+                    });
 
                     makingAnswer = false;
 
@@ -707,66 +717,7 @@ async function connectSocket(){
 
 
 /* =========================
-   WAIT ICE
-========================= */
-
-async function waitForIceComplete(){
-
-    return new Promise(resolve => {
-
-        if(
-            peerConnection
-            .iceGatheringState ===
-            "complete"
-        ){
-
-            resolve();
-
-        }
-
-        else{
-
-            function checkState(){
-
-                if(
-                    peerConnection
-                    .iceGatheringState ===
-                    "complete"
-                ){
-
-                    peerConnection
-                    .removeEventListener(
-
-                        "icegatheringstatechange",
-
-                        checkState
-
-                    );
-
-                    resolve();
-
-                }
-
-            }
-
-            peerConnection
-            .addEventListener(
-
-                "icegatheringstatechange",
-
-                checkState
-
-            );
-
-        }
-
-    });
-
-}
-
-
-/* =========================
-   PEER CONNECTION
+   PEER
 ========================= */
 
 function createPeerConnection(){
@@ -776,33 +727,11 @@ function createPeerConnection(){
         rtcConfig
     );
 
-    peerConnection.addTransceiver(
-
-        "video",
-
-        {
-            direction:"recvonly"
-        }
-
-    );
-
-    peerConnection.addTransceiver(
-
-        "audio",
-
-        {
-            direction:"sendrecv"
-        }
-
-    );
-
     /* =====================
-       PROFESSOR AUDIO TRACK
+       PROFESSOR AUDIO
     ===================== */
 
-    if(
-        professorStream
-    ){
+    if(professorStream){
 
         professorStream
         .getTracks()
@@ -829,7 +758,7 @@ function createPeerConnection(){
         event.streams[0];
 
         /* =====================
-           STUDENT VIDEO
+           VIDEO
         ===================== */
 
         if(
@@ -839,6 +768,15 @@ function createPeerConnection(){
 
             liveVideo.srcObject =
             remoteStream;
+
+            liveVideo.autoplay =
+            true;
+
+            liveVideo.playsInline =
+            true;
+
+            liveVideo.muted =
+            true;
 
             liveVideo.setAttribute(
                 "playsinline",
@@ -850,22 +788,7 @@ function createPeerConnection(){
                 true
             );
 
-            liveVideo.setAttribute(
-                "muted",
-                true
-            );
-
-            liveVideo.autoplay =
-            true;
-
-            liveVideo.playsInline =
-            true;
-
-            liveVideo.muted =
-            true;
-
-            liveVideo.style.display =
-            "block";
+            liveVideo.load();
 
             setTimeout(async () => {
 
@@ -916,6 +839,8 @@ function createPeerConnection(){
 
             0;
 
+            remoteAudio.load();
+
             setTimeout(() => {
 
                 remoteAudio.play()
@@ -925,7 +850,7 @@ function createPeerConnection(){
 
                 });
 
-            }, 500);
+            }, 700);
 
         }
 
@@ -934,32 +859,72 @@ function createPeerConnection(){
     peerConnection.onicecandidate =
     (event) => {
 
-        if(
-            event.candidate &&
-            socket &&
-            socket.readyState === 1
-        ){
+        if(event.candidate){
 
-            socket.send(
+            sendSocket({
 
-                JSON.stringify({
+                type:
+                "ice-candidate",
 
-                    senderId:
-                    mySocketId,
+                candidate:
+                event.candidate
 
-                    type:
-                    "ice-candidate",
-
-                    candidate:
-                    event.candidate
-
-                })
-
-            );
+            });
 
         }
 
     };
+
+    peerConnection.onconnectionstatechange =
+    () => {
+
+        console.log(
+
+            "RTC STATE:",
+
+            peerConnection.connectionState
+
+        );
+
+    };
+
+}
+
+
+/* =========================
+   SEND SOCKET
+========================= */
+
+function sendSocket(data){
+
+    if(
+        !socket
+    ){
+
+        return;
+
+    }
+
+    if(
+        socket.readyState !== 1
+    ){
+
+        return;
+
+    }
+
+    socket.send(
+
+        JSON.stringify({
+
+            senderId:
+            mySocketId,
+
+            ...data
+
+        })
+
+    );
 
 }
 
@@ -984,8 +949,8 @@ toggleVoiceBtn.onclick =
         socket.readyState !== 1
     ){
 
-        console.log(
-            "Socket not connected"
+        createSystemMessage(
+            "Student not connected"
         );
 
         return;
@@ -995,25 +960,21 @@ toggleVoiceBtn.onclick =
     voiceModeEnabled =
     true;
 
-    professorAudioTrack.enabled =
-    true;
-
     remoteAudio.volume =
     1;
 
-    socket.send(
+    remoteAudio.muted =
+    false;
 
-        JSON.stringify({
+    professorAudioTrack.enabled =
+    true;
 
-            senderId:
-            mySocketId,
+    sendSocket({
 
-            type:
-            "sir-mic-on"
+        type:
+        "sir-mic-on"
 
-        })
-
-    );
+    });
 
     createSystemMessage(
         "Voice Communication Started"
@@ -1037,19 +998,6 @@ endVoiceBtn.onclick =
 
     }
 
-    if(
-        !socket ||
-        socket.readyState !== 1
-    ){
-
-        console.log(
-            "Socket not connected"
-        );
-
-        return;
-
-    }
-
     voiceModeEnabled =
     false;
 
@@ -1059,19 +1007,12 @@ endVoiceBtn.onclick =
     remoteAudio.volume =
     0;
 
-    socket.send(
+    sendSocket({
 
-        JSON.stringify({
+        type:
+        "sir-mic-off"
 
-            senderId:
-            mySocketId,
-
-            type:
-            "sir-mic-off"
-
-        })
-
-    );
+    });
 
     createSystemMessage(
         "Voice Communication Ended"
@@ -1087,19 +1028,15 @@ endVoiceBtn.onclick =
 muteBtn.onclick =
 () => {
 
-    if(
-        !professorAudioTrack
-    ){
-
-        return;
-
-    }
-
     muted = !muted;
 
-    professorAudioTrack.enabled =
-    !muted &&
-    voiceModeEnabled;
+    if(professorAudioTrack){
+
+        professorAudioTrack.enabled =
+        !muted &&
+        voiceModeEnabled;
+
+    }
 
     muteBtn.innerText =
 
@@ -1119,6 +1056,7 @@ muteBtn.onclick =
 /* =========================
    SEND QUESTION
 ========================= */
+
 function sendQuestion(){
 
     const text =
@@ -1143,21 +1081,14 @@ function sendQuestion(){
 
     }
 
-    socket.send(
+    sendSocket({
 
-        JSON.stringify({
+        type:
+        "question",
 
-            senderId:
-            mySocketId,
+        text:text
 
-            type:
-            "question",
-
-            text:text
-
-        })
-
-    );
+    });
 
     addTranscript(
         "Professor",
@@ -1169,7 +1100,11 @@ function sendQuestion(){
 
 }
 
-// added
+
+/* =========================
+   ENTER SEND
+========================= */
+
 questionInput.addEventListener(
 
     "keydown",
@@ -1188,7 +1123,7 @@ questionInput.addEventListener(
 
 
 /* =========================
-   VOICE ASK
+   VOICE QUESTION
 ========================= */
 
 if(
@@ -1225,20 +1160,49 @@ if(
 
     };
 
+    recognition.onend =
+    () => {
+
+        recognizing = false;
+
+    };
+
 }
 
 
 voiceQuestionBtn.onclick =
 () => {
 
-    if(recognition){
+    if(!recognition){
+
+        return;
+
+    }
+
+    if(recognizing){
+
+        return;
+
+    }
+
+    try{
+
+        recognizing = true;
 
         recognition.start();
+
+    }catch(err){
+
+        console.log(err);
 
     }
 
 };
 
+
+/* =========================
+   VOICE CHAT BTN
+========================= */
 
 voiceChatBtn.onclick =
 () => {
@@ -1249,7 +1213,7 @@ voiceChatBtn.onclick =
 
 
 /* =========================
-   AI ANALYSIS
+   ANALYSIS
 ========================= */
 
 function updateAIAnalysis(data){
@@ -1292,17 +1256,6 @@ function updateAIAnalysis(data){
 ========================= */
 
 function addMonitoringMessage(text){
-
-    const exists =
-    monitorHistory.some(
-        item => item.text === text
-    );
-
-    if(exists){
-
-        return;
-
-    }
 
     monitorHistory.unshift({
 
@@ -1462,7 +1415,8 @@ function updateConnectionStatus(connected){
 
 if(logoutBtn){
 
-    logoutBtn.onclick = () => {
+    logoutBtn.onclick =
+    () => {
 
         localStorage.removeItem(
             "sir"

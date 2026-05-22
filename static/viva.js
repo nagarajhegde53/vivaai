@@ -1,9 +1,9 @@
 /* =========================================================
-   FINAL ADVANCED viva.js
-   FULLY FIXED
+   FINAL PRODUCTION viva.js
+   ADVANCED + STABLE + LOW LATENCY
    MOBILE + DESKTOP COMPATIBLE
-   NO FEATURE REMOVED
-   BACKEND + HTML + CSS COMPATIBLE
+   NO FEATURES REMOVED
+   SINGLE NEGOTIATION ARCHITECTURE
 ========================================================= */
 
 
@@ -81,11 +81,6 @@ document.getElementById(
     "voicePopup"
 );
 
-const enableVoiceBtn =
-document.getElementById(
-    "enableVoiceBtn"
-);
-
 const controls =
 document.querySelector(
     ".controls"
@@ -128,15 +123,15 @@ Math.random()
 
 let socket = null;
 
+let peerConnection = null;
+
+let localStream = null;
+
 let recognition = null;
 
 let reconnecting = false;
 
 let reconnectTimeout = null;
-
-let peerConnection = null;
-
-let localStream = null;
 
 let pendingCandidates = [];
 
@@ -154,15 +149,15 @@ let monitorInterval = null;
 
 let faceModelsLoaded = false;
 
-let alreadyConnected = false;
-
-let makingOffer = false;
-
 let localAudioTrack = null;
 
 let localVideoTrack = null;
 
 let professorVoiceActive = false;
+
+let alreadyConnected = false;
+
+let makingOffer = false;
 
 
 /* =========================
@@ -179,8 +174,6 @@ const rtcConfig = {
         }
 
     ],
-
-    iceCandidatePoolSize:10,
 
     bundlePolicy:"max-bundle",
 
@@ -228,6 +221,15 @@ async () => {
 ========================= */
 
 async function connectSocket(){
+
+    if(
+        socket &&
+        socket.readyState === 1
+    ){
+
+        return;
+
+    }
 
     return new Promise((resolve,reject) => {
 
@@ -287,18 +289,34 @@ async function connectSocket(){
                 false
             );
 
-            if(!reconnecting){
+            if(reconnecting){
 
-                reconnecting = true;
-
-                reconnectTimeout =
-                setTimeout(() => {
-
-                    connectSocket();
-
-                }, 3000);
+                return;
 
             }
+
+            reconnecting = true;
+
+            clearTimeout(
+                reconnectTimeout
+            );
+
+            reconnectTimeout =
+            setTimeout(async () => {
+
+                try{
+
+                    await connectSocket();
+
+                }catch(err){
+
+                    console.log(err);
+
+                }
+
+                reconnecting = false;
+
+            }, 4000);
 
         };
 
@@ -365,28 +383,9 @@ async function connectSocket(){
 
                 }
 
-                voicePopup.style.display =
-                "flex";
-
-                const popupText =
-                voicePopup.querySelector(
-                    "p"
+                showVoicePopup(
+                    "Professor microphone is now active."
                 );
-
-                if(popupText){
-
-                    popupText.innerText =
-
-                    "Professor microphone is now active.";
-
-                }
-
-                setTimeout(() => {
-
-                    voicePopup.style.display =
-                    "none";
-
-                }, 3000);
 
             }
 
@@ -409,46 +408,8 @@ async function connectSocket(){
 
                 }
 
-                voicePopup.style.display =
-                "flex";
-
-                const popupText =
-                voicePopup.querySelector(
-                    "p"
-                );
-
-                if(popupText){
-
-                    popupText.innerText =
-
-                    "Professor ended voice communication.";
-
-                }
-
-                setTimeout(() => {
-
-                    voicePopup.style.display =
-                    "none";
-
-                }, 3000);
-
-            }
-
-            /* =====================
-               ANSWER
-            ===================== */
-
-            if(
-                msg.type ===
-                "answer"
-            ){
-
-                createBubble(
-
-                    `You: ${msg.text}`,
-
-                    "answer"
-
+                showVoicePopup(
+                    "Professor ended voice communication."
                 );
 
             }
@@ -487,6 +448,23 @@ async function connectSocket(){
                         .setRemoteDescription(
                             answerDesc
                         );
+
+                        peerConnection
+                        .getReceivers()
+                        .forEach(receiver => {
+
+                            if(
+                                receiver.track &&
+                                receiver.track.kind ===
+                                "audio"
+                            ){
+
+                                receiver.track.enabled =
+                                true;
+
+                            }
+
+                        });
 
                         createSystemMessage(
                             "Connected To Professor"
@@ -554,7 +532,7 @@ async function connectSocket(){
 
 
 /* =========================
-   START MEDIA
+   MEDIA
 ========================= */
 
 async function startMedia(){
@@ -567,8 +545,13 @@ async function startMedia(){
         .getUserMedia({
 
             video:{
-                width:1280,
-                height:720
+
+                width:640,
+
+                height:360,
+
+                frameRate:20
+
             },
 
             audio:true
@@ -578,13 +561,22 @@ async function startMedia(){
         studentVideo.srcObject =
         localStream;
 
+        studentVideo.autoplay =
+        true;
+
+        studentVideo.playsInline =
+        true;
+
+        studentVideo.muted =
+        true;
+
         studentVideo.setAttribute(
-            "playsinline",
+            "autoplay",
             true
         );
 
         studentVideo.setAttribute(
-            "autoplay",
+            "playsinline",
             true
         );
 
@@ -593,16 +585,19 @@ async function startMedia(){
             true
         );
 
-        studentVideo.muted =
-        true;
+        setTimeout(async () => {
 
-        studentVideo.playsInline =
-        true;
+            try{
 
-        studentVideo.autoplay =
-        true;
+                await studentVideo.play();
 
-        await studentVideo.play();
+            }catch(err){
+
+                console.log(err);
+
+            }
+
+        }, 500);
 
         localVideoTrack =
         localStream
@@ -611,10 +606,6 @@ async function startMedia(){
         localAudioTrack =
         localStream
         .getAudioTracks()[0];
-
-        /* =====================
-           AUDIO INITIALLY OFF
-        ===================== */
 
         localAudioTrack.enabled =
         false;
@@ -634,26 +625,12 @@ async function startMedia(){
 
         await createAndSendOffer();
 
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
+        sendSocket({
 
-            socket.send(
+            type:
+            "student-camera-on"
 
-                JSON.stringify({
-
-                    senderId:
-                    mySocketId,
-
-                    type:
-                    "student-camera-on"
-
-                })
-
-            );
-
-        }
+        });
 
         setTimeout(async () => {
 
@@ -694,38 +671,28 @@ async function createAndSendOffer(){
         const offer =
 
         await peerConnection
-        .createOffer();
+        .createOffer({
+
+            offerToReceiveAudio:true,
+
+            offerToReceiveVideo:true
+
+        });
 
         await peerConnection
         .setLocalDescription(
             offer
         );
 
-        await waitForIceComplete();
+        sendSocket({
 
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
+            type:
+            "webrtc-offer",
 
-            socket.send(
+            offer:
+            peerConnection.localDescription
 
-                JSON.stringify({
-
-                    senderId:
-                    mySocketId,
-
-                    type:
-                    "webrtc-offer",
-
-                    offer:
-                    peerConnection.localDescription
-
-                })
-
-            );
-
-        }
+        });
 
         makingOffer = false;
 
@@ -741,65 +708,6 @@ async function createAndSendOffer(){
 
 
 /* =========================
-   WAIT ICE
-========================= */
-
-async function waitForIceComplete(){
-
-    return new Promise(resolve => {
-
-        if(
-            peerConnection
-            .iceGatheringState ===
-            "complete"
-        ){
-
-            resolve();
-
-        }
-
-        else{
-
-            function checkState(){
-
-                if(
-                    peerConnection
-                    .iceGatheringState ===
-                    "complete"
-                ){
-
-                    peerConnection
-                    .removeEventListener(
-
-                        "icegatheringstatechange",
-
-                        checkState
-
-                    );
-
-                    resolve();
-
-                }
-
-            }
-
-            peerConnection
-            .addEventListener(
-
-                "icegatheringstatechange",
-
-                checkState
-
-            );
-
-        }
-
-    });
-
-}
-
-
-/* =========================
    PEER
 ========================= */
 
@@ -808,26 +716,6 @@ function createPeerConnection(){
     peerConnection =
     new RTCPeerConnection(
         rtcConfig
-    );
-
-    peerConnection.addTransceiver(
-
-        "video",
-
-        {
-            direction:"sendrecv"
-        }
-
-    );
-
-    peerConnection.addTransceiver(
-
-        "audio",
-
-        {
-            direction:"sendrecv"
-        }
-
     );
 
     peerConnection.ontrack =
@@ -846,6 +734,9 @@ function createPeerConnection(){
             "audio"
         ){
 
+            event.track.enabled =
+            true;
+
             remoteAudio.srcObject =
             remoteStream;
 
@@ -858,6 +749,8 @@ function createPeerConnection(){
             remoteAudio.muted =
             false;
 
+            remoteAudio.load();
+
             setTimeout(() => {
 
                 remoteAudio.play()
@@ -867,7 +760,7 @@ function createPeerConnection(){
 
                 });
 
-            }, 500);
+            }, 700);
 
         }
 
@@ -876,32 +769,72 @@ function createPeerConnection(){
     peerConnection.onicecandidate =
     (event) => {
 
-        if(
-            event.candidate &&
-            socket &&
-            socket.readyState === 1
-        ){
+        if(event.candidate){
 
-            socket.send(
+            sendSocket({
 
-                JSON.stringify({
+                type:
+                "ice-candidate",
 
-                    senderId:
-                    mySocketId,
+                candidate:
+                event.candidate
 
-                    type:
-                    "ice-candidate",
-
-                    candidate:
-                    event.candidate
-
-                })
-
-            );
+            });
 
         }
 
     };
+
+    peerConnection.onconnectionstatechange =
+    () => {
+
+        console.log(
+
+            "RTC STATE:",
+
+            peerConnection.connectionState
+
+        );
+
+    };
+
+}
+
+
+/* =========================
+   SEND SOCKET
+========================= */
+
+function sendSocket(data){
+
+    if(
+        !socket
+    ){
+
+        return;
+
+    }
+
+    if(
+        socket.readyState !== 1
+    ){
+
+        return;
+
+    }
+
+    socket.send(
+
+        JSON.stringify({
+
+            senderId:
+            mySocketId,
+
+            ...data
+
+        })
+
+    );
 
 }
 
@@ -921,10 +854,6 @@ async function loadFaceModels(){
         }
 
         if(typeof faceapi === "undefined"){
-
-            console.log(
-                "FACE API NOT LOADED"
-            );
 
             return false;
 
@@ -1066,7 +995,7 @@ async function startFaceDetection(){
 
 
 /* =========================
-   MONITORING
+   MONITOR
 ========================= */
 
 function startMonitoring(){
@@ -1108,39 +1037,25 @@ function startMonitoring(){
 
 
 /* =========================
-   CHEATING ALERT
+   CHEATING
 ========================= */
 
 function sendCheatingAlert(text){
 
-    if(
-        socket &&
-        socket.readyState === 1
-    ){
+    sendSocket({
 
-        socket.send(
+        type:
+        "cheating-alert",
 
-            JSON.stringify({
+        text:text
 
-                senderId:
-                mySocketId,
-
-                type:
-                "cheating-alert",
-
-                text:text
-
-            })
-
-        );
-
-    }
+    });
 
 }
 
 
 /* =========================
-   SPEECH RECOGNITION
+   SPEECH
 ========================= */
 
 if(
@@ -1178,28 +1093,14 @@ if(
             "answer"
         );
 
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
+        sendSocket({
 
-            socket.send(
+            type:
+            "answer",
 
-                JSON.stringify({
+            text:text
 
-                    senderId:
-                    mySocketId,
-
-                    type:
-                    "answer",
-
-                    text:text
-
-                })
-
-            );
-
-        }
+        });
 
         try{
 
@@ -1234,33 +1135,17 @@ if(
             const data =
             await res.json();
 
-            if(
-                data.success
-            ){
+            if(data.success){
 
-                if(
-                    socket &&
-                    socket.readyState === 1
-                ){
+                sendSocket({
 
-                    socket.send(
+                    type:
+                    "live-analysis",
 
-                        JSON.stringify({
+                    analysis:
+                    data.analysis
 
-                            senderId:
-                            mySocketId,
-
-                            type:
-                            "live-analysis",
-
-                            analysis:
-                            data.analysis
-
-                        })
-
-                    );
-
-                }
+                });
 
             }
 
@@ -1279,7 +1164,8 @@ if(
    RECORD
 ========================= */
 
-recordBtn.onclick = () => {
+recordBtn.onclick =
+() => {
 
     if(recognition){
 
@@ -1298,7 +1184,8 @@ recordBtn.onclick = () => {
    STOP
 ========================= */
 
-stopBtn.onclick = () => {
+stopBtn.onclick =
+() => {
 
     if(recognition){
 
@@ -1317,7 +1204,8 @@ stopBtn.onclick = () => {
    STORE
 ========================= */
 
-storeBtn.onclick = () => {
+storeBtn.onclick =
+() => {
 
     if(
         !tempQuestion ||
@@ -1347,7 +1235,7 @@ storeBtn.onclick = () => {
 
 
 /* =========================
-   STORED
+   RENDER STORED
 ========================= */
 
 function renderStored(){
@@ -1456,7 +1344,8 @@ async () => {
    MUTE
 ========================= */
 
-muteBtn.onclick = () => {
+muteBtn.onclick =
+() => {
 
     muted = !muted;
 
@@ -1484,7 +1373,7 @@ muteBtn.onclick = () => {
 
 
 /* =========================
-   BUBBLE
+   UI
 ========================= */
 
 function createBubble(text,type){
@@ -1510,10 +1399,6 @@ function createBubble(text,type){
 }
 
 
-/* =========================
-   SYSTEM
-========================= */
-
 function createSystemMessage(text){
 
     const div =
@@ -1533,6 +1418,39 @@ function createSystemMessage(text){
 
     chatBox.scrollTop =
     chatBox.scrollHeight;
+
+}
+
+
+function showVoicePopup(text){
+
+    if(!voicePopup){
+
+        return;
+
+    }
+
+    voicePopup.style.display =
+    "flex";
+
+    const popupText =
+    voicePopup.querySelector(
+        "p"
+    );
+
+    if(popupText){
+
+        popupText.innerText =
+        text;
+
+    }
+
+    setTimeout(() => {
+
+        voicePopup.style.display =
+        "none";
+
+    }, 3000);
 
 }
 
