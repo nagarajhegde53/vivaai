@@ -1,13 +1,9 @@
 /* =========================================================
    FINAL ADVANCED viva.js
    FULLY FIXED
+   BACKEND COMPATIBLE
+   HTML/CSS COMPATIBLE
    NO ROLLBACK
-   FULL ADVANCED VERSION
-   COMPATIBLE WITH:
-   - YOUR HTML
-   - YOUR CSS
-   - YOUR BACKEND
-   - FINAL sir_dashboard.js
 ========================================================= */
 
 
@@ -124,6 +120,11 @@ JSON.parse(userData);
 /* =========================
    GLOBALS
 ========================= */
+
+const mySocketId =
+Math.random()
+.toString(36)
+.slice(2);
 
 let socket = null;
 
@@ -300,15 +301,33 @@ async function connectSocket(){
         socket.onmessage =
         async (event) => {
 
+            console.log(
+                "RAW SOCKET:",
+                event.data
+            );
+
             const msg =
             JSON.parse(
                 event.data
             );
 
             console.log(
-                "SOCKET:",
+                "PARSED:",
                 msg
             );
+
+            /* =====================
+               PREVENT SELF DUPLICATE
+            ===================== */
+
+            if(
+                msg.senderId ===
+                mySocketId
+            ){
+
+                return;
+
+            }
 
             /* =====================
                QUESTION
@@ -316,7 +335,8 @@ async function connectSocket(){
 
             if(
                 msg.type ===
-                "question"
+                "question" &&
+                msg.text
             ){
 
                 tempQuestion =
@@ -366,7 +386,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               ANSWER
+               WEBRTC ANSWER
             ===================== */
 
             if(
@@ -504,6 +524,17 @@ async function startCamera(){
 
         await studentVideo.play();
 
+        await new Promise(resolve => {
+
+            studentVideo.onloadedmetadata =
+            () => {
+
+                resolve();
+
+            };
+
+        });
+
         createPeerConnection();
 
         localStream
@@ -527,6 +558,9 @@ async function startCamera(){
             socket.send(
 
                 JSON.stringify({
+
+                    senderId:
+                    mySocketId,
 
                     type:
                     "student-camera-on"
@@ -579,63 +613,14 @@ async function createAndSendOffer(){
             offer
         );
 
-        /* =====================
-           WAIT ICE COMPLETE
-        ===================== */
-
-        await new Promise(resolve => {
-
-            if(
-                peerConnection
-                .iceGatheringState ===
-                "complete"
-            ){
-
-                resolve();
-
-            }
-
-            else{
-
-                function checkState(){
-
-                    if(
-                        peerConnection
-                        .iceGatheringState ===
-                        "complete"
-                    ){
-
-                        peerConnection
-                        .removeEventListener(
-
-                            "icegatheringstatechange",
-
-                            checkState
-
-                        );
-
-                        resolve();
-
-                    }
-
-                }
-
-                peerConnection
-                .addEventListener(
-
-                    "icegatheringstatechange",
-
-                    checkState
-
-                );
-
-            }
-
-        });
+        await waitForIceComplete();
 
         socket.send(
 
             JSON.stringify({
+
+                senderId:
+                mySocketId,
 
                 type:
                 "webrtc-offer",
@@ -664,6 +649,65 @@ async function createAndSendOffer(){
 
 
 /* =========================
+   WAIT ICE
+========================= */
+
+async function waitForIceComplete(){
+
+    return new Promise(resolve => {
+
+        if(
+            peerConnection
+            .iceGatheringState ===
+            "complete"
+        ){
+
+            resolve();
+
+        }
+
+        else{
+
+            function checkState(){
+
+                if(
+                    peerConnection
+                    .iceGatheringState ===
+                    "complete"
+                ){
+
+                    peerConnection
+                    .removeEventListener(
+
+                        "icegatheringstatechange",
+
+                        checkState
+
+                    );
+
+                    resolve();
+
+                }
+
+            }
+
+            peerConnection
+            .addEventListener(
+
+                "icegatheringstatechange",
+
+                checkState
+
+            );
+
+        }
+
+    });
+
+}
+
+
+/* =========================
    PEER CONNECTION
 ========================= */
 
@@ -672,6 +716,16 @@ function createPeerConnection(){
     peerConnection =
     new RTCPeerConnection(
         rtcConfig
+    );
+
+    peerConnection.addTransceiver(
+
+        "video",
+
+        {
+            direction:"sendrecv"
+        }
+
     );
 
     peerConnection.onconnectionstatechange =
@@ -712,10 +766,6 @@ function createPeerConnection(){
 
         const remoteStream =
         event.streams[0];
-
-        /* =====================
-           AUDIO
-        ===================== */
 
         if(
             event.track.kind ===
@@ -760,6 +810,9 @@ function createPeerConnection(){
             socket.send(
 
                 JSON.stringify({
+
+                    senderId:
+                    mySocketId,
 
                     type:
                     "ice-candidate",
@@ -813,13 +866,9 @@ async () => {
         micStream
         .getAudioTracks()[0];
 
-        localStream.addTrack(
-            audioTrack
-        );
-
         peerConnection.addTrack(
             audioTrack,
-            localStream
+            micStream
         );
 
         await createAndSendOffer();
@@ -1015,7 +1064,6 @@ function startMonitoring(){
         }
 
         const tracks =
-
         localStream
         .getVideoTracks();
 
@@ -1048,6 +1096,9 @@ function sendCheatingAlert(text){
         socket.send(
 
             JSON.stringify({
+
+                senderId:
+                mySocketId,
 
                 type:
                 "cheating-alert",
@@ -1114,6 +1165,9 @@ if(
 
                 JSON.stringify({
 
+                    senderId:
+                    mySocketId,
+
                     type:
                     "answer",
 
@@ -1124,10 +1178,6 @@ if(
             );
 
         }
-
-        /* =====================
-           LIVE AI ANALYSIS
-        ===================== */
 
         try{
 
@@ -1173,26 +1223,22 @@ if(
                 data.analysis
             ){
 
-                if(
-                    socket &&
-                    socket.readyState === 1
-                ){
+                socket.send(
 
-                    socket.send(
+                    JSON.stringify({
 
-                        JSON.stringify({
+                        senderId:
+                        mySocketId,
 
-                            type:
-                            "live-analysis",
+                        type:
+                        "live-analysis",
 
-                            analysis:
-                            data.analysis
+                        analysis:
+                        data.analysis
 
-                        })
+                    })
 
-                    );
-
-                }
+                );
 
             }
 
@@ -1390,22 +1436,7 @@ async () => {
 
 muteBtn.onclick = () => {
 
-    if(!localStream){
-
-        return;
-
-    }
-
     muted = !muted;
-
-    localStream
-    .getAudioTracks()
-    .forEach(track => {
-
-        track.enabled =
-        !muted;
-
-    });
 
     muteBtn.innerText =
 

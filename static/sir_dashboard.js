@@ -1,9 +1,9 @@
 /* =========================================================
    FINAL ADVANCED sir_dashboard.js
    FULLY FIXED
+   BACKEND COMPATIBLE
+   HTML/CSS COMPATIBLE
    NO ROLLBACK
-   FULL ADVANCED VERSION
-   COMPATIBLE WITH FINAL viva.js
 ========================================================= */
 
 
@@ -112,6 +112,11 @@ JSON.parse(
 /* =========================
    GLOBALS
 ========================= */
+
+const mySocketId =
+Math.random()
+.toString(36)
+.slice(2);
 
 let socket = null;
 
@@ -270,7 +275,7 @@ function renderStudents(){
 
 
 /* =========================
-   CONNECT TO STUDENT
+   CONNECT STUDENT
 ========================= */
 
 function connectToStudent(roomId){
@@ -369,15 +374,33 @@ function connectSocket(){
     socket.onmessage =
     async (event) => {
 
+        console.log(
+            "RAW SOCKET:",
+            event.data
+        );
+
         const msg =
         JSON.parse(
             event.data
         );
 
         console.log(
-            "SOCKET:",
+            "PARSED:",
             msg
         );
+
+        /* =====================
+           PREVENT SELF DUPLICATE
+        ===================== */
+
+        if(
+            msg.senderId ===
+            mySocketId
+        ){
+
+            return;
+
+        }
 
         /* =====================
            QUESTION
@@ -385,7 +408,8 @@ function connectSocket(){
 
         if(
             msg.type ===
-            "question"
+            "question" &&
+            msg.text
         ){
 
             addTranscript(
@@ -408,10 +432,17 @@ function connectSocket(){
         ===================== */
 
         if(
-            msg.type ===
-            "answer" ||
-            msg.type ===
-            "student-answer"
+            (
+                msg.type ===
+                "answer" ||
+
+                msg.type ===
+                "student-answer"
+            )
+
+            &&
+
+            msg.text
         ){
 
             addTranscript(
@@ -453,8 +484,17 @@ function connectSocket(){
         ===================== */
 
         if(
-            msg.type ===
-            "live-analysis"
+            (
+                msg.type ===
+                "live-analysis" ||
+
+                msg.type ===
+                "analysis"
+            )
+
+            &&
+
+            msg.analysis
         ){
 
             updateAIAnalysis(
@@ -546,63 +586,14 @@ function connectSocket(){
                     answer
                 );
 
-                /* =====================
-                   WAIT ICE COMPLETE
-                ===================== */
-
-                await new Promise(resolve => {
-
-                    if(
-                        peerConnection
-                        .iceGatheringState ===
-                        "complete"
-                    ){
-
-                        resolve();
-
-                    }
-
-                    else{
-
-                        function checkState(){
-
-                            if(
-                                peerConnection
-                                .iceGatheringState ===
-                                "complete"
-                            ){
-
-                                peerConnection
-                                .removeEventListener(
-
-                                    "icegatheringstatechange",
-
-                                    checkState
-
-                                );
-
-                                resolve();
-
-                            }
-
-                        }
-
-                        peerConnection
-                        .addEventListener(
-
-                            "icegatheringstatechange",
-
-                            checkState
-
-                        );
-
-                    }
-
-                });
+                await waitForIceComplete();
 
                 socket.send(
 
                     JSON.stringify({
+
+                        senderId:
+                        mySocketId,
 
                         type:
                         "webrtc-answer",
@@ -712,6 +703,65 @@ function connectSocket(){
 
 
 /* =========================
+   WAIT ICE
+========================= */
+
+async function waitForIceComplete(){
+
+    return new Promise(resolve => {
+
+        if(
+            peerConnection
+            .iceGatheringState ===
+            "complete"
+        ){
+
+            resolve();
+
+        }
+
+        else{
+
+            function checkState(){
+
+                if(
+                    peerConnection
+                    .iceGatheringState ===
+                    "complete"
+                ){
+
+                    peerConnection
+                    .removeEventListener(
+
+                        "icegatheringstatechange",
+
+                        checkState
+
+                    );
+
+                    resolve();
+
+                }
+
+            }
+
+            peerConnection
+            .addEventListener(
+
+                "icegatheringstatechange",
+
+                checkState
+
+            );
+
+        }
+
+    });
+
+}
+
+
+/* =========================
    PEER CONNECTION
 ========================= */
 
@@ -721,10 +771,6 @@ function createPeerConnection(){
     new RTCPeerConnection(
         rtcConfig
     );
-
-    /* =====================
-       VIDEO RECEIVER
-    ===================== */
 
     peerConnection.addTransceiver(
 
@@ -775,10 +821,6 @@ function createPeerConnection(){
         const remoteStream =
         event.streams[0];
 
-        /* =====================
-           VIDEO
-        ===================== */
-
         if(
             event.track.kind ===
             "video"
@@ -796,22 +838,58 @@ function createPeerConnection(){
             liveVideo.muted =
             true;
 
-            try{
+            liveVideo.style.display =
+            "block";
 
-                await liveVideo.play();
+            setTimeout(async () => {
+
+                try{
+
+                    await liveVideo.play();
+
+                    console.log(
+                        "VIDEO PLAYING"
+                    );
+
+                }catch(err){
+
+                    console.log(
+                        "VIDEO PLAY ERROR:",
+                        err
+                    );
+
+                }
+
+            }, 300);
+
+        }
+
+        if(
+            event.track.kind ===
+            "audio"
+        ){
+
+            remoteAudio.srcObject =
+            remoteStream;
+
+            remoteAudio.autoplay =
+            true;
+
+            remoteAudio.playsInline =
+            true;
+
+            remoteAudio.muted =
+            false;
+
+            remoteAudio.play()
+            .catch(err => {
 
                 console.log(
-                    "VIDEO PLAYING"
-                );
-
-            }catch(err){
-
-                console.log(
-                    "VIDEO PLAY ERROR:",
+                    "AUDIO ERROR:",
                     err
                 );
 
-            }
+            });
 
         }
 
@@ -829,6 +907,9 @@ function createPeerConnection(){
             socket.send(
 
                 JSON.stringify({
+
+                    senderId:
+                    mySocketId,
 
                     type:
                     "ice-candidate",
@@ -866,10 +947,14 @@ function sendQuestion(){
 
         JSON.stringify({
 
+            senderId:
+            mySocketId,
+
             type:
             "question",
 
-            text:text
+            text:
+            text
 
         })
 
@@ -881,6 +966,11 @@ function sendQuestion(){
 
         "ai"
 
+    );
+
+    addTranscript(
+        "Professor",
+        text
     );
 
     questionInput.value =
@@ -960,10 +1050,14 @@ function sendChat(){
 
         JSON.stringify({
 
+            senderId:
+            mySocketId,
+
             type:
             "chat",
 
-            text:text
+            text:
+            text
 
         })
 
@@ -1019,23 +1113,29 @@ function updateAIAnalysis(data){
 
     }
 
-    confidenceBar.style.width =
-
-    (
+    const confidence =
+    parseInt(
         data.confidence || 0
-    ) + "%";
+    );
+
+    const communication =
+    parseInt(
+        data.communication || 0
+    );
+
+    const understanding =
+    parseInt(
+        data.understanding || 0
+    );
+
+    confidenceBar.style.width =
+    confidence + "%";
 
     communicationBar.style.width =
-
-    (
-        data.communication || 0
-    ) + "%";
+    communication + "%";
 
     understandingBar.style.width =
-
-    (
-        data.understanding || 0
-    ) + "%";
+    understanding + "%";
 
 }
 
@@ -1046,10 +1146,12 @@ function updateAIAnalysis(data){
 
 function addMonitoringMessage(text){
 
-    if(
-        monitorHistory.length > 0 &&
-        monitorHistory[0].text === text
-    ){
+    const exists =
+    monitorHistory.some(
+        item => item.text === text
+    );
+
+    if(exists){
 
         return;
 
@@ -1063,10 +1165,6 @@ function addMonitoringMessage(text){
         .toLocaleTimeString()
 
     });
-
-    /* =====================
-       KEEP ONLY 10
-    ===================== */
 
     if(
         monitorHistory.length > 10
