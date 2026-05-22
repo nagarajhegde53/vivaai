@@ -1119,7 +1119,6 @@ muteBtn.onclick =
 /* =========================
    SEND QUESTION
 ========================= */
-
 function sendQuestion(){
 
     const text =
@@ -1132,27 +1131,33 @@ function sendQuestion(){
     }
 
     if(
-        socket &&
-        socket.readyState === 1
+        !socket ||
+        socket.readyState !== 1
     ){
 
-        socket.send(
-
-            JSON.stringify({
-
-                senderId:
-                mySocketId,
-
-                type:
-                "question",
-
-                text:text
-
-            })
-
+        createSystemMessage(
+            "Student not connected"
         );
 
+        return;
+
     }
+
+    socket.send(
+
+        JSON.stringify({
+
+            senderId:
+            mySocketId,
+
+            type:
+            "question",
+
+            text:text
+
+        })
+
+    );
 
     addTranscript(
         "Professor",
@@ -1163,6 +1168,23 @@ function sendQuestion(){
     "";
 
 }
+
+// added
+questionInput.addEventListener(
+
+    "keydown",
+
+    (e) => {
+
+        if(e.key === "Enter"){
+
+            sendQuestion();
+
+        }
+
+    }
+
+);
 
 
 /* =========================
@@ -1221,7 +1243,7 @@ voiceQuestionBtn.onclick =
 voiceChatBtn.onclick =
 () => {
 
-    sendQuestion();
+    toggleVoiceBtn.click();
 
 };
 
