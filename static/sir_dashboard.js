@@ -1,13 +1,12 @@
 /* =========================================================
-   FINAL ADVANCED sir_dashboard.js
-   FULL PRODUCTION VERSION
-   FULL viva.js COMPATIBILITY
-   ON-DEMAND VIDEO
-   ON-DEMAND AUDIO
+   FINAL PRODUCTION sir_dashboard.js
+   FULLY FIXED ADVANCED VERSION
+   PRESERVES ALL FEATURES
+   FIXED QUESTION RECORDING
+   FIXED STUDENT ANSWER RECEIVE
+   FIXED AUDIO CONNECTION
+   FIXED WEBRTC NEGOTIATION
    LOW LATENCY
-   STABLE SPEECH API
-   NO AUTO CAMERA
-   NO AUTO MIC
 ========================================================= */
 
 
@@ -92,7 +91,7 @@ document.getElementById(
 
 /*
 AI FOLLOW UP BUTTON
-USED AS VIDEO STREAM BUTTON
+USED AS VIDEO BUTTON
 */
 
 const voiceChatBtn =
@@ -680,8 +679,7 @@ async function connectSocket(){
 
 
 /* =========================
-   INIT AUDIO ONLY WHEN
-   START TALKING CLICKED
+   AUDIO INIT
 ========================= */
 
 async function initializeProfessorAudio(){
@@ -689,6 +687,9 @@ async function initializeProfessorAudio(){
     try{
 
         if(professorAudioTrack){
+
+            professorAudioTrack.enabled =
+            !muted;
 
             return;
         }
@@ -709,17 +710,96 @@ async function initializeProfessorAudio(){
         professorAudioTrack.enabled =
         !muted;
 
+        /*
+        ADD TRACK
+        */
+
         if(peerConnection){
 
-            peerConnection.addTrack(
+            const alreadyAdded =
 
-                professorAudioTrack,
+            peerConnection
+            .getSenders()
+            .some(sender => {
 
-                professorAudioStream
+                return (
+                    sender.track &&
+                    sender.track.kind ===
+                    "audio"
+                );
 
-            );
+            });
+
+            if(!alreadyAdded){
+
+                peerConnection.addTrack(
+
+                    professorAudioTrack,
+
+                    professorAudioStream
+
+                );
+
+                /*
+                IMPORTANT FIX
+                */
+
+                renegotiateConnection();
+
+            }
 
         }
+
+    }catch(err){
+
+        console.log(err);
+
+    }
+
+}
+
+
+/* =========================
+   RENEGOTIATE
+========================= */
+
+async function renegotiateConnection(){
+
+    try{
+
+        if(
+            !peerConnection
+        ){
+
+            return;
+
+        }
+
+        const offer =
+
+        await peerConnection
+        .createOffer({
+
+            offerToReceiveAudio:true,
+
+            offerToReceiveVideo:true
+
+        });
+
+        await peerConnection
+        .setLocalDescription(
+            offer
+        );
+
+        sendSocket({
+
+            type:
+            "webrtc-answer",
+
+            answer:
+            peerConnection.localDescription
+
+        });
 
     }catch(err){
 
@@ -908,6 +988,9 @@ voiceChatBtn.onclick =
         streamStarted =
         false;
 
+        voiceStarted =
+        false;
+
         sendSocket({
 
             type:
@@ -1052,7 +1135,8 @@ muteBtn.onclick =
     if(professorAudioTrack){
 
         professorAudioTrack.enabled =
-        !muted;
+        !muted &&
+        voiceStarted;
 
     }
 
@@ -1087,7 +1171,7 @@ function sendQuestion(){
     }
 
     /*
-    QUESTION ONLY USES SOCKET
+    SOCKET ONLY
     */
 
     sendSocket({
@@ -1171,6 +1255,16 @@ if(
 
     recognition.onend =
     () => {
+
+        recognizing =
+        false;
+
+    };
+
+    recognition.onerror =
+    (err) => {
+
+        console.log(err);
 
         recognizing =
         false;

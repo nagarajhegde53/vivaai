@@ -1,11 +1,13 @@
 /* =========================================================
-   FINAL ADVANCED viva.js
-   FULLY STABLE ARCHITECTURE
+   FINAL PRODUCTION viva.js
+   FULLY FIXED ADVANCED VERSION
+   PRESERVES ALL FEATURES
+   LOW LATENCY
    ON-DEMAND VIDEO
    ON-DEMAND AUDIO
-   SPEECH API ISOLATED
-   LOW LATENCY
-   MOBILE + DESKTOP
+   FIXED SPEECH API
+   FIXED AUDIO NEGOTIATION
+   FIXED ANSWER STREAMING
 ========================================================= */
 
 
@@ -151,6 +153,8 @@ let makingOffer = false;
 let streamStarted = false;
 
 let voiceStarted = false;
+
+let recognitionRunning = false;
 
 let localVideoStream = null;
 
@@ -374,7 +378,7 @@ async function connectSocket(){
             }
 
             /*
-            START VIDEO STREAM
+            START VIDEO
             */
 
             if(
@@ -557,6 +561,12 @@ async function initializeVideo(){
 
     try{
 
+        if(localVideoTrack){
+
+            return;
+
+        }
+
         localVideoStream =
         await navigator
         .mediaDevices
@@ -619,6 +629,12 @@ async function initializeVideo(){
 async function initializeAudio(){
 
     try{
+
+        if(localAudioTrack){
+
+            return;
+
+        }
 
         localAudioStream =
         await navigator
@@ -731,6 +747,12 @@ function addAudioTrack(){
 
     );
 
+    /*
+    IMPORTANT FIX
+    */
+
+    createAndSendOffer();
+
 }
 
 
@@ -750,11 +772,17 @@ function stopStreaming(){
 
         localVideoTrack.stop();
 
+        localVideoTrack =
+        null;
+
     }
 
     if(localAudioTrack){
 
         localAudioTrack.stop();
+
+        localAudioTrack =
+        null;
 
     }
 
@@ -1168,29 +1196,91 @@ if(
     recognition.maxAlternatives =
     1;
 
+    recognition.onstart =
+    () => {
+
+        recognitionRunning =
+        true;
+
+    };
+
+    recognition.onend =
+    () => {
+
+        recognitionRunning =
+        false;
+
+        /*
+        RESTORE AUDIO
+        */
+
+        if(
+            voiceStarted &&
+            localAudioTrack
+        ){
+
+            localAudioTrack.enabled =
+            !muted;
+
+        }
+
+    };
+
+    recognition.onerror =
+    (err) => {
+
+        console.log(err);
+
+    };
+
     recognition.onresult =
     async (e) => {
 
-        const text =
-        e.results[0][0]
-        .transcript;
+        try{
 
-        tempAnswer =
-        text;
+            const text =
+            e.results[0][0]
+            .transcript;
 
-        createBubble(
-            text,
-            "answer"
-        );
+            tempAnswer =
+            text;
 
-        sendSocket({
+            createBubble(
+                text,
+                "answer"
+            );
 
-            type:
-            "answer",
+            /*
+            SEND TO SIR
+            */
 
-            text:text
+            sendSocket({
 
-        });
+                type:"answer",
+
+                text:text
+
+            });
+
+            /*
+            RESTORE AUDIO
+            */
+
+            if(
+                voiceStarted &&
+                localAudioTrack
+            ){
+
+                localAudioTrack.enabled =
+                !muted;
+
+            }
+
+        }catch(err){
+
+            console.log(err);
+
+        }
 
     };
 
@@ -1202,15 +1292,28 @@ if(
 ========================= */
 
 recordBtn.onclick =
-() => {
-
-    if(!recognition){
-
-        return;
-
-    }
+async () => {
 
     try{
+
+        if(
+            recognitionRunning
+        ){
+
+            return;
+
+        }
+
+        /*
+        TEMP DISABLE MIC STREAM
+        */
+
+        if(localAudioTrack){
+
+            localAudioTrack.enabled =
+            false;
+
+        }
 
         recognition.start();
 
@@ -1391,7 +1494,8 @@ muteBtn.onclick =
     if(localAudioTrack){
 
         localAudioTrack.enabled =
-        !muted;
+        !muted &&
+        voiceStarted;
 
     }
 
