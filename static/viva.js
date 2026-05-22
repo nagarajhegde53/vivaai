@@ -1,9 +1,8 @@
 /* =========================================================
-   FINAL PRODUCTION viva.js
-   ADVANCED + STABLE + LOW LATENCY
-   MOBILE + DESKTOP COMPATIBLE
-   NO FEATURES REMOVED
-   SINGLE NEGOTIATION ARCHITECTURE
+   FINAL ADVANCED viva.js
+   LOW LATENCY + ON DEMAND STREAMING
+   MOBILE + DESKTOP STABLE
+   FULLY COMPATIBLE WITH FINAL sir_dashboard.js
 ========================================================= */
 
 
@@ -76,11 +75,6 @@ document.getElementById(
     "submit"
 );
 
-const voicePopup =
-document.getElementById(
-    "voicePopup"
-);
-
 const controls =
 document.querySelector(
     ".controls"
@@ -109,7 +103,9 @@ if(!userData){
 }
 
 const user =
-JSON.parse(userData);
+JSON.parse(
+    userData
+);
 
 
 /* =========================
@@ -126,6 +122,10 @@ let socket = null;
 let peerConnection = null;
 
 let localStream = null;
+
+let localVideoTrack = null;
+
+let localAudioTrack = null;
 
 let recognition = null;
 
@@ -149,15 +149,15 @@ let monitorInterval = null;
 
 let faceModelsLoaded = false;
 
-let localAudioTrack = null;
-
-let localVideoTrack = null;
-
 let professorVoiceActive = false;
 
 let alreadyConnected = false;
 
 let makingOffer = false;
+
+let streamStarted = false;
+
+let voiceConnected = false;
 
 
 /* =========================
@@ -205,7 +205,15 @@ async () => {
 
         await connectSocket();
 
-        await startMedia();
+        await initializeMedia();
+
+        startMonitoring();
+
+        setTimeout(async () => {
+
+            await startFaceDetection();
+
+        }, 2000);
 
     }catch(err){
 
@@ -365,15 +373,53 @@ async function connectSocket(){
             }
 
             /* =====================
-               MIC ON
+               START STREAM
             ===================== */
 
             if(
                 msg.type ===
-                "sir-mic-on"
+                "start-stream"
+            ){
+
+                if(streamStarted){
+
+                    return;
+
+                }
+
+                streamStarted =
+                true;
+
+                await startVideoStreaming();
+
+            }
+
+            /* =====================
+               STOP STREAM
+            ===================== */
+
+            if(
+                msg.type ===
+                "stop-stream"
+            ){
+
+                stopStreaming();
+
+            }
+
+            /* =====================
+               CONNECT VOICE
+            ===================== */
+
+            if(
+                msg.type ===
+                "connect-voice"
             ){
 
                 professorVoiceActive =
+                true;
+
+                voiceConnected =
                 true;
 
                 if(localAudioTrack){
@@ -383,22 +429,21 @@ async function connectSocket(){
 
                 }
 
-                showVoicePopup(
-                    "Professor microphone is now active."
-                );
-
             }
 
             /* =====================
-               MIC OFF
+               DISCONNECT VOICE
             ===================== */
 
             if(
                 msg.type ===
-                "sir-mic-off"
+                "disconnect-voice"
             ){
 
                 professorVoiceActive =
+                false;
+
+                voiceConnected =
                 false;
 
                 if(localAudioTrack){
@@ -408,14 +453,10 @@ async function connectSocket(){
 
                 }
 
-                showVoicePopup(
-                    "Professor ended voice communication."
-                );
-
             }
 
             /* =====================
-               WEBRTC ANSWER
+               ANSWER
             ===================== */
 
             if(
@@ -425,9 +466,7 @@ async function connectSocket(){
 
                 try{
 
-                    if(
-                        !peerConnection
-                    ){
+                    if(!peerConnection){
 
                         return;
 
@@ -447,27 +486,6 @@ async function connectSocket(){
                         await peerConnection
                         .setRemoteDescription(
                             answerDesc
-                        );
-
-                        peerConnection
-                        .getReceivers()
-                        .forEach(receiver => {
-
-                            if(
-                                receiver.track &&
-                                receiver.track.kind ===
-                                "audio"
-                            ){
-
-                                receiver.track.enabled =
-                                true;
-
-                            }
-
-                        });
-
-                        createSystemMessage(
-                            "Connected To Professor"
                         );
 
                     }
@@ -532,10 +550,10 @@ async function connectSocket(){
 
 
 /* =========================
-   MEDIA
+   MEDIA INIT
 ========================= */
 
-async function startMedia(){
+async function initializeMedia(){
 
     try{
 
@@ -570,34 +588,12 @@ async function startMedia(){
         studentVideo.muted =
         true;
 
-        studentVideo.setAttribute(
-            "autoplay",
-            true
-        );
+        studentVideo.play()
+        .catch(err => {
 
-        studentVideo.setAttribute(
-            "playsinline",
-            true
-        );
+            console.log(err);
 
-        studentVideo.setAttribute(
-            "muted",
-            true
-        );
-
-        setTimeout(async () => {
-
-            try{
-
-                await studentVideo.play();
-
-            }catch(err){
-
-                console.log(err);
-
-            }
-
-        }, 500);
+        });
 
         localVideoTrack =
         localStream
@@ -607,21 +603,43 @@ async function startMedia(){
         localStream
         .getAudioTracks()[0];
 
+        /* =====================
+           AUDIO OFF INITIALLY
+        ===================== */
+
         localAudioTrack.enabled =
         false;
 
+    }catch(err){
+
+        console.log(err);
+
+        errorBox.innerText =
+        "Camera/Microphone access denied";
+
+    }
+
+}
+
+
+/* =========================
+   START VIDEO STREAM
+========================= */
+
+async function startVideoStreaming(){
+
+    try{
+
         createPeerConnection();
 
-        localStream
-        .getTracks()
-        .forEach(track => {
+        /* =====================
+           VIDEO ONLY
+        ===================== */
 
-            peerConnection.addTrack(
-                track,
-                localStream
-            );
-
-        });
+        peerConnection.addTrack(
+            localVideoTrack,
+            localStream
+        );
 
         await createAndSendOffer();
 
@@ -632,22 +650,53 @@ async function startMedia(){
 
         });
 
-        setTimeout(async () => {
-
-            await startFaceDetection();
-
-        }, 3000);
-
-        startMonitoring();
+        createSystemMessage(
+            "Video Streaming Started"
+        );
 
     }catch(err){
 
         console.log(err);
 
-        errorBox.innerText =
-        "Camera/Microphone access denied";
+    }
+
+}
+
+
+/* =========================
+   STOP STREAM
+========================= */
+
+function stopStreaming(){
+
+    streamStarted =
+    false;
+
+    voiceConnected =
+    false;
+
+    professorVoiceActive =
+    false;
+
+    if(localAudioTrack){
+
+        localAudioTrack.enabled =
+        false;
 
     }
+
+    if(peerConnection){
+
+        peerConnection.close();
+
+        peerConnection =
+        null;
+
+    }
+
+    createSystemMessage(
+        "Streaming Stopped"
+    );
 
 }
 
@@ -666,7 +715,8 @@ async function createAndSendOffer(){
 
         }
 
-        makingOffer = true;
+        makingOffer =
+        true;
 
         const offer =
 
@@ -694,11 +744,13 @@ async function createAndSendOffer(){
 
         });
 
-        makingOffer = false;
+        makingOffer =
+        false;
 
     }catch(err){
 
-        makingOffer = false;
+        makingOffer =
+        false;
 
         console.log(err);
 
@@ -712,6 +764,12 @@ async function createAndSendOffer(){
 ========================= */
 
 function createPeerConnection(){
+
+    if(peerConnection){
+
+        return;
+
+    }
 
     peerConnection =
     new RTCPeerConnection(
@@ -734,9 +792,6 @@ function createPeerConnection(){
             "audio"
         ){
 
-            event.track.enabled =
-            true;
-
             remoteAudio.srcObject =
             remoteStream;
 
@@ -749,18 +804,12 @@ function createPeerConnection(){
             remoteAudio.muted =
             false;
 
-            remoteAudio.load();
+            remoteAudio.play()
+            .catch(err => {
 
-            setTimeout(() => {
+                console.log(err);
 
-                remoteAudio.play()
-                .catch(err => {
-
-                    console.log(err);
-
-                });
-
-            }, 700);
+            });
 
         }
 
@@ -795,6 +844,51 @@ function createPeerConnection(){
             peerConnection.connectionState
 
         );
+
+        /* =====================
+           ADD AUDIO ONLY
+           WHEN VOICE CONNECTED
+        ===================== */
+
+        if(
+            peerConnection.connectionState ===
+            "connected"
+        ){
+
+            if(
+                voiceConnected &&
+                localAudioTrack
+            ){
+
+                const alreadyAdded =
+
+                peerConnection
+                .getSenders()
+                .some(sender => {
+
+                    return (
+                        sender.track &&
+                        sender.track.kind ===
+                        "audio"
+                    );
+
+                });
+
+                if(!alreadyAdded){
+
+                    peerConnection.addTrack(
+
+                        localAudioTrack,
+
+                        localStream
+
+                    );
+
+                }
+
+            }
+
+        }
 
     };
 
@@ -877,10 +971,6 @@ async function loadFaceModels(){
 
         faceModelsLoaded =
         true;
-
-        createSystemMessage(
-            "Face Detection Active"
-        );
 
         return true;
 
@@ -1102,59 +1192,6 @@ if(
 
         });
 
-        try{
-
-            const res =
-            await fetch(
-
-                "/api/live-analysis",
-
-                {
-
-                    method:"POST",
-
-                    headers:{
-                        "Content-Type":
-                        "application/json"
-                    },
-
-                    body:JSON.stringify({
-
-                        question:
-                        tempQuestion,
-
-                        answer:
-                        text
-
-                    })
-
-                }
-
-            );
-
-            const data =
-            await res.json();
-
-            if(data.success){
-
-                sendSocket({
-
-                    type:
-                    "live-analysis",
-
-                    analysis:
-                    data.analysis
-
-                });
-
-            }
-
-        }catch(err){
-
-            console.log(err);
-
-        }
-
     };
 
 }
@@ -1171,10 +1208,6 @@ recordBtn.onclick =
 
         recognition.start();
 
-        createSystemMessage(
-            "Recording..."
-        );
-
     }
 
 };
@@ -1190,10 +1223,6 @@ stopBtn.onclick =
     if(recognition){
 
         recognition.stop();
-
-        createSystemMessage(
-            "Recording stopped"
-        );
 
     }
 
@@ -1235,7 +1264,7 @@ storeBtn.onclick =
 
 
 /* =========================
-   RENDER STORED
+   STORED
 ========================= */
 
 function renderStored(){
@@ -1418,39 +1447,6 @@ function createSystemMessage(text){
 
     chatBox.scrollTop =
     chatBox.scrollHeight;
-
-}
-
-
-function showVoicePopup(text){
-
-    if(!voicePopup){
-
-        return;
-
-    }
-
-    voicePopup.style.display =
-    "flex";
-
-    const popupText =
-    voicePopup.querySelector(
-        "p"
-    );
-
-    if(popupText){
-
-        popupText.innerText =
-        text;
-
-    }
-
-    setTimeout(() => {
-
-        voicePopup.style.display =
-        "none";
-
-    }, 3000);
 
 }
 

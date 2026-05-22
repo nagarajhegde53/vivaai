@@ -1,9 +1,9 @@
 /* =========================================================
-   FINAL PRODUCTION sir_dashboard.js
-   ADVANCED + STABLE + LOW LATENCY
-   MOBILE + DESKTOP COMPATIBLE
-   NO FEATURES REMOVED
-   SINGLE NEGOTIATION ARCHITECTURE
+   FINAL ADVANCED sir_dashboard.js
+   ON-DEMAND VIDEO + VOICE SYSTEM
+   LOW LATENCY
+   MOBILE + DESKTOP STABLE
+   FULLY COMPATIBLE WITH FINAL viva.js
 ========================================================= */
 
 
@@ -86,6 +86,12 @@ document.getElementById(
     "muteBtn"
 );
 
+/*
+IMPORTANT:
+USING SAME EXISTING BUTTON
+(NO HTML CHANGE)
+*/
+
 const voiceChatBtn =
 document.getElementById(
     "voiceChatBtn"
@@ -157,6 +163,8 @@ let makingAnswer = false;
 
 let recognizing = false;
 
+let streamStarted = false;
+
 
 /* =========================
    RTC CONFIG
@@ -203,27 +211,12 @@ async function initProfessorAudio(){
         professorStream
         .getAudioTracks()[0];
 
-        /* =====================
-           NEGOTIATE FIRST
-        ===================== */
-
-        setTimeout(() => {
-
-            if(professorAudioTrack){
-
-                professorAudioTrack.enabled =
-                false;
-
-            }
-
-        }, 3000);
+        professorAudioTrack.enabled =
+        false;
 
     }catch(err){
 
-        console.log(
-            "MIC ERROR:",
-            err
-        );
+        console.log(err);
 
     }
 
@@ -484,22 +477,6 @@ async function connectSocket(){
             }
 
             /* =====================
-               QUESTION
-            ===================== */
-
-            if(
-                msg.type ===
-                "question"
-            ){
-
-                addTranscript(
-                    "Professor",
-                    msg.text
-                );
-
-            }
-
-            /* =====================
                ANSWER
             ===================== */
 
@@ -510,6 +487,22 @@ async function connectSocket(){
 
                 addTranscript(
                     "Student",
+                    msg.text
+                );
+
+            }
+
+            /* =====================
+               QUESTION
+            ===================== */
+
+            if(
+                msg.type ===
+                "question"
+            ){
+
+                addTranscript(
+                    "Professor",
                     msg.text
                 );
 
@@ -541,21 +534,6 @@ async function connectSocket(){
 
                 addMonitoringMessage(
                     msg.text
-                );
-
-            }
-
-            /* =====================
-               CAMERA
-            ===================== */
-
-            if(
-                msg.type ===
-                "student-camera-on"
-            ){
-
-                createSystemMessage(
-                    "Student Camera Active"
                 );
 
             }
@@ -601,7 +579,8 @@ async function connectSocket(){
 
                     }
 
-                    makingAnswer = true;
+                    makingAnswer =
+                    true;
 
                     const answer =
 
@@ -623,7 +602,8 @@ async function connectSocket(){
 
                     });
 
-                    makingAnswer = false;
+                    makingAnswer =
+                    false;
 
                     for(
                         const candidate
@@ -652,12 +632,13 @@ async function connectSocket(){
                     pendingCandidates = [];
 
                     createSystemMessage(
-                        "Video Connected"
+                        "Stream Connected"
                     );
 
                 }catch(err){
 
-                    makingAnswer = false;
+                    makingAnswer =
+                    false;
 
                     console.log(err);
 
@@ -722,14 +703,20 @@ async function connectSocket(){
 
 function createPeerConnection(){
 
+    if(peerConnection){
+
+        return;
+
+    }
+
     peerConnection =
     new RTCPeerConnection(
         rtcConfig
     );
 
-    /* =====================
-       PROFESSOR AUDIO
-    ===================== */
+    /*
+    ADD PROFESSOR AUDIO TRACK
+    */
 
     if(professorStream){
 
@@ -757,9 +744,9 @@ function createPeerConnection(){
         const remoteStream =
         event.streams[0];
 
-        /* =====================
-           VIDEO
-        ===================== */
+        /*
+        VIDEO
+        */
 
         if(
             event.track.kind ===
@@ -778,37 +765,18 @@ function createPeerConnection(){
             liveVideo.muted =
             true;
 
-            liveVideo.setAttribute(
-                "playsinline",
-                true
-            );
+            liveVideo.play()
+            .catch(err => {
 
-            liveVideo.setAttribute(
-                "autoplay",
-                true
-            );
+                console.log(err);
 
-            liveVideo.load();
-
-            setTimeout(async () => {
-
-                try{
-
-                    await liveVideo.play();
-
-                }catch(err){
-
-                    console.log(err);
-
-                }
-
-            }, 500);
+            });
 
         }
 
-        /* =====================
-           STUDENT AUDIO
-        ===================== */
+        /*
+        AUDIO
+        */
 
         if(
             event.track.kind ===
@@ -839,18 +807,12 @@ function createPeerConnection(){
 
             0;
 
-            remoteAudio.load();
+            remoteAudio.play()
+            .catch(err => {
 
-            setTimeout(() => {
+                console.log(err);
 
-                remoteAudio.play()
-                .catch(err => {
-
-                    console.log(err);
-
-                });
-
-            }, 700);
+            });
 
         }
 
@@ -930,7 +892,73 @@ function sendSocket(data){
 
 
 /* =========================
-   START TALKING
+   START VIDEO STREAM
+========================= */
+
+voiceChatBtn.onclick =
+() => {
+
+    if(streamStarted){
+
+        /*
+        STOP STREAM
+        */
+
+        streamStarted =
+        false;
+
+        sendSocket({
+
+            type:
+            "stop-stream"
+
+        });
+
+        if(peerConnection){
+
+            peerConnection.close();
+
+            peerConnection =
+            null;
+
+        }
+
+        liveVideo.srcObject =
+        null;
+
+        createSystemMessage(
+            "Video Stream Stopped"
+        );
+
+        return;
+
+    }
+
+    /*
+    START STREAM
+    */
+
+    streamStarted =
+    true;
+
+    createPeerConnection();
+
+    sendSocket({
+
+        type:
+        "start-stream"
+
+    });
+
+    createSystemMessage(
+        "Starting Video Stream..."
+    );
+
+};
+
+
+/* =========================
+   CONNECT VOICE
 ========================= */
 
 toggleVoiceBtn.onclick =
@@ -944,65 +972,45 @@ toggleVoiceBtn.onclick =
 
     }
 
-    if(
-        !socket ||
-        socket.readyState !== 1
-    ){
-
-        createSystemMessage(
-            "Student not connected"
-        );
-
-        return;
-
-    }
-
     voiceModeEnabled =
+    true;
+
+    professorAudioTrack.enabled =
     true;
 
     remoteAudio.volume =
     1;
 
-    remoteAudio.muted =
-    false;
-
-    professorAudioTrack.enabled =
-    true;
-
     sendSocket({
 
         type:
-        "sir-mic-on"
+        "connect-voice"
 
     });
 
     createSystemMessage(
-        "Voice Communication Started"
+        "Voice Connected"
     );
 
 };
 
 
 /* =========================
-   END TALKING
+   END VOICE
 ========================= */
 
 endVoiceBtn.onclick =
 () => {
 
-    if(
-        !professorAudioTrack
-    ){
-
-        return;
-
-    }
-
     voiceModeEnabled =
     false;
 
-    professorAudioTrack.enabled =
-    false;
+    if(professorAudioTrack){
+
+        professorAudioTrack.enabled =
+        false;
+
+    }
 
     remoteAudio.volume =
     0;
@@ -1010,12 +1018,12 @@ endVoiceBtn.onclick =
     sendSocket({
 
         type:
-        "sir-mic-off"
+        "disconnect-voice"
 
     });
 
     createSystemMessage(
-        "Voice Communication Ended"
+        "Voice Disconnected"
     );
 
 };
@@ -1068,19 +1076,6 @@ function sendQuestion(){
 
     }
 
-    if(
-        !socket ||
-        socket.readyState !== 1
-    ){
-
-        createSystemMessage(
-            "Student not connected"
-        );
-
-        return;
-
-    }
-
     sendSocket({
 
         type:
@@ -1123,7 +1118,7 @@ questionInput.addEventListener(
 
 
 /* =========================
-   VOICE QUESTION
+   SPEECH
 ========================= */
 
 if(
@@ -1163,7 +1158,8 @@ if(
     recognition.onend =
     () => {
 
-        recognizing = false;
+        recognizing =
+        false;
 
     };
 
@@ -1187,7 +1183,8 @@ voiceQuestionBtn.onclick =
 
     try{
 
-        recognizing = true;
+        recognizing =
+        true;
 
         recognition.start();
 
@@ -1196,18 +1193,6 @@ voiceQuestionBtn.onclick =
         console.log(err);
 
     }
-
-};
-
-
-/* =========================
-   VOICE CHAT BTN
-========================= */
-
-voiceChatBtn.onclick =
-() => {
-
-    toggleVoiceBtn.click();
 
 };
 
