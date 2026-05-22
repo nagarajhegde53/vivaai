@@ -1,12 +1,13 @@
 /* =========================================================
-   FINAL PRODUCTION sir_dashboard.js
-   FULL ADVANCED VERSION
-   LOW LATENCY
+   FINAL ADVANCED sir_dashboard.js
+   FULL PRODUCTION VERSION
+   FULL viva.js COMPATIBILITY
    ON-DEMAND VIDEO
    ON-DEMAND AUDIO
-   FULL viva.js COMPATIBILITY
-   NO AUTO STREAMING
-   NO MIXED ARCHITECTURE
+   LOW LATENCY
+   STABLE SPEECH API
+   NO AUTO CAMERA
+   NO AUTO MIC
 ========================================================= */
 
 
@@ -137,9 +138,7 @@ let selectedRoom = null;
 
 let peerConnection = null;
 
-let professorStream = null;
-
-let professorAudioTrack = null;
+let recognition = null;
 
 let reconnecting = false;
 
@@ -147,25 +146,27 @@ let reconnectTimeout = null;
 
 let pendingCandidates = [];
 
-let monitorHistory = [];
+let currentStudents = [];
 
 let transcriptHistory = [];
 
-let recognition = null;
+let monitorHistory = [];
 
-let currentStudents = [];
+let professorAudioStream = null;
 
-let muted = false;
+let professorAudioTrack = null;
 
 let streamStarted = false;
 
 let voiceStarted = false;
 
-let alreadyConnected = false;
+let muted = false;
 
 let recognizing = false;
 
 let makingAnswer = false;
+
+let alreadyConnected = false;
 
 
 /* =========================
@@ -190,43 +191,6 @@ const rtcConfig = {
     sdpSemantics:"unified-plan"
 
 };
-
-
-/* =========================
-   INIT MIC
-========================= */
-
-async function initProfessorAudio(){
-
-    try{
-
-        professorStream =
-        await navigator
-        .mediaDevices
-        .getUserMedia({
-
-            audio:true
-
-        });
-
-        professorAudioTrack =
-        professorStream
-        .getAudioTracks()[0];
-
-        /*
-        AUDIO INITIALLY OFF
-        */
-
-        professorAudioTrack.enabled =
-        false;
-
-    }catch(err){
-
-        console.log(err);
-
-    }
-
-}
 
 
 /* =========================
@@ -716,6 +680,57 @@ async function connectSocket(){
 
 
 /* =========================
+   INIT AUDIO ONLY WHEN
+   START TALKING CLICKED
+========================= */
+
+async function initializeProfessorAudio(){
+
+    try{
+
+        if(professorAudioTrack){
+
+            return;
+        }
+
+        professorAudioStream =
+        await navigator
+        .mediaDevices
+        .getUserMedia({
+
+            audio:true
+
+        });
+
+        professorAudioTrack =
+        professorAudioStream
+        .getAudioTracks()[0];
+
+        professorAudioTrack.enabled =
+        !muted;
+
+        if(peerConnection){
+
+            peerConnection.addTrack(
+
+                professorAudioTrack,
+
+                professorAudioStream
+
+            );
+
+        }
+
+    }catch(err){
+
+        console.log(err);
+
+    }
+
+}
+
+
+/* =========================
    PEER
 ========================= */
 
@@ -731,25 +746,6 @@ function createPeerConnection(){
     new RTCPeerConnection(
         rtcConfig
     );
-
-    /*
-    ADD PROFESSOR AUDIO TRACK
-    */
-
-    if(professorStream){
-
-        professorStream
-        .getTracks()
-        .forEach(track => {
-
-            peerConnection.addTrack(
-                track,
-                professorStream
-            );
-
-        });
-
-    }
 
     peerConnection.ontrack =
     async (event) => {
@@ -793,7 +789,7 @@ function createPeerConnection(){
         }
 
         /*
-        STUDENT AUDIO
+        AUDIO
         */
 
         if(
@@ -855,19 +851,6 @@ function createPeerConnection(){
 
     };
 
-    peerConnection.onconnectionstatechange =
-    () => {
-
-        console.log(
-
-            "RTC STATE:",
-
-            peerConnection.connectionState
-
-        );
-
-    };
-
 }
 
 
@@ -917,7 +900,7 @@ voiceChatBtn.onclick =
 () => {
 
     /*
-    STOP VIDEO
+    STOP STREAM
     */
 
     if(streamStarted){
@@ -944,6 +927,9 @@ voiceChatBtn.onclick =
         liveVideo.srcObject =
         null;
 
+        remoteAudio.srcObject =
+        null;
+
         createSystemMessage(
             "Video Stream Stopped"
         );
@@ -953,7 +939,7 @@ voiceChatBtn.onclick =
     }
 
     /*
-    START VIDEO
+    START STREAM
     */
 
     streamStarted =
@@ -980,11 +966,9 @@ voiceChatBtn.onclick =
 ========================= */
 
 toggleVoiceBtn.onclick =
-() => {
+async () => {
 
-    if(
-        !streamStarted
-    ){
+    if(!streamStarted){
 
         createSystemMessage(
             "Start video stream first"
@@ -994,15 +978,16 @@ toggleVoiceBtn.onclick =
 
     }
 
+    if(voiceStarted){
+
+        return;
+
+    }
+
     voiceStarted =
     true;
 
-    if(professorAudioTrack){
-
-        professorAudioTrack.enabled =
-        !muted;
-
-    }
+    await initializeProfessorAudio();
 
     remoteAudio.volume =
     1;
@@ -1067,10 +1052,7 @@ muteBtn.onclick =
     if(professorAudioTrack){
 
         professorAudioTrack.enabled =
-
-        !muted &&
-
-        voiceStarted;
+        !muted;
 
     }
 
@@ -1105,8 +1087,7 @@ function sendQuestion(){
     }
 
     /*
-    QUESTION USES ONLY SOCKET
-    NOT WEBRTC
+    QUESTION ONLY USES SOCKET
     */
 
     sendSocket({
@@ -1151,7 +1132,7 @@ questionInput.addEventListener(
 
 
 /* =========================
-   SPEECH
+   SPEECH API
 ========================= */
 
 if(
@@ -1198,6 +1179,10 @@ if(
 
 }
 
+
+/* =========================
+   RECORD QUESTION
+========================= */
 
 voiceQuestionBtn.onclick =
 () => {
@@ -1453,8 +1438,6 @@ if(logoutBtn){
 ========================= */
 
 (async () => {
-
-    await initProfessorAudio();
 
     await loadStudents();
 

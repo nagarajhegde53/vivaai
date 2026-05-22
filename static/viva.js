@@ -1,11 +1,11 @@
 /* =========================================================
-   FINAL PRODUCTION viva.js
-   FULL ADVANCED VERSION
-   LOW LATENCY
+   FINAL ADVANCED viva.js
+   FULLY STABLE ARCHITECTURE
    ON-DEMAND VIDEO
    ON-DEMAND AUDIO
-   STABLE WEBSOCKET
-   FINAL ARCHITECTURE
+   SPEECH API ISOLATED
+   LOW LATENCY
+   MOBILE + DESKTOP
 ========================================================= */
 
 
@@ -122,12 +122,6 @@ let socket = null;
 
 let peerConnection = null;
 
-let localStream = null;
-
-let localVideoTrack = null;
-
-let localAudioTrack = null;
-
 let recognition = null;
 
 let reconnecting = false;
@@ -152,11 +146,19 @@ let faceModelsLoaded = false;
 
 let alreadyConnected = false;
 
+let makingOffer = false;
+
 let streamStarted = false;
 
 let voiceStarted = false;
 
-let makingOffer = false;
+let localVideoStream = null;
+
+let localAudioStream = null;
+
+let localVideoTrack = null;
+
+let localAudioTrack = null;
 
 
 /* =========================
@@ -204,15 +206,9 @@ async () => {
 
         await connectSocket();
 
-        await initializeMedia();
+        await loadFaceModels();
 
         startMonitoring();
-
-        setTimeout(async () => {
-
-            await startFaceDetection();
-
-        }, 2000);
 
     }catch(err){
 
@@ -262,7 +258,8 @@ async function connectSocket(){
 
         socket.onopen = () => {
 
-            reconnecting = false;
+            reconnecting =
+            false;
 
             updateSocketStatus(
                 true
@@ -274,7 +271,8 @@ async function connectSocket(){
                     "Connected"
                 );
 
-                alreadyConnected = true;
+                alreadyConnected =
+                true;
 
             }
 
@@ -282,7 +280,8 @@ async function connectSocket(){
 
         };
 
-        socket.onerror = (err) => {
+        socket.onerror =
+        (err) => {
 
             console.log(err);
 
@@ -290,7 +289,8 @@ async function connectSocket(){
 
         };
 
-        socket.onclose = () => {
+        socket.onclose =
+        () => {
 
             updateSocketStatus(
                 false
@@ -302,7 +302,8 @@ async function connectSocket(){
 
             }
 
-            reconnecting = true;
+            reconnecting =
+            true;
 
             clearTimeout(
                 reconnectTimeout
@@ -321,7 +322,8 @@ async function connectSocket(){
 
                 }
 
-                reconnecting = false;
+                reconnecting =
+                false;
 
             }, 4000);
 
@@ -349,9 +351,9 @@ async function connectSocket(){
 
             }
 
-            /* =====================
-               QUESTION
-            ===================== */
+            /*
+            QUESTION
+            */
 
             if(
                 msg.type ===
@@ -371,9 +373,9 @@ async function connectSocket(){
 
             }
 
-            /* =====================
-               START VIDEO
-            ===================== */
+            /*
+            START VIDEO STREAM
+            */
 
             if(
                 msg.type ===
@@ -389,13 +391,15 @@ async function connectSocket(){
                 streamStarted =
                 true;
 
+                await initializeVideo();
+
                 await startVideoStreaming();
 
             }
 
-            /* =====================
-               STOP VIDEO
-            ===================== */
+            /*
+            STOP STREAM
+            */
 
             if(
                 msg.type ===
@@ -406,34 +410,33 @@ async function connectSocket(){
 
             }
 
-            /* =====================
-               START AUDIO
-            ===================== */
+            /*
+            START AUDIO
+            */
 
             if(
                 msg.type ===
                 "connect-voice"
             ){
 
+                if(voiceStarted){
+
+                    return;
+
+                }
+
                 voiceStarted =
                 true;
 
-                if(
-                    localAudioTrack
-                ){
-
-                    localAudioTrack.enabled =
-                    !muted;
-
-                }
+                await initializeAudio();
 
                 addAudioTrack();
 
             }
 
-            /* =====================
-               STOP AUDIO
-            ===================== */
+            /*
+            STOP AUDIO
+            */
 
             if(
                 msg.type ===
@@ -443,9 +446,7 @@ async function connectSocket(){
                 voiceStarted =
                 false;
 
-                if(
-                    localAudioTrack
-                ){
+                if(localAudioTrack){
 
                     localAudioTrack.enabled =
                     false;
@@ -454,9 +455,9 @@ async function connectSocket(){
 
             }
 
-            /* =====================
-               WEBRTC ANSWER
-            ===================== */
+            /*
+            WEBRTC ANSWER
+            */
 
             if(
                 msg.type ===
@@ -465,9 +466,7 @@ async function connectSocket(){
 
                 try{
 
-                    if(
-                        !peerConnection
-                    ){
+                    if(!peerConnection){
 
                         return;
 
@@ -499,9 +498,9 @@ async function connectSocket(){
 
             }
 
-            /* =====================
-               ICE
-            ===================== */
+            /*
+            ICE
+            */
 
             if(
                 msg.type ===
@@ -551,14 +550,14 @@ async function connectSocket(){
 
 
 /* =========================
-   MEDIA
+   VIDEO INIT
 ========================= */
 
-async function initializeMedia(){
+async function initializeVideo(){
 
     try{
 
-        localStream =
+        localVideoStream =
         await navigator
         .mediaDevices
         .getUserMedia({
@@ -571,14 +570,16 @@ async function initializeMedia(){
 
                 frameRate:20
 
-            },
-
-            audio:true
+            }
 
         });
 
+        localVideoTrack =
+        localVideoStream
+        .getVideoTracks()[0];
+
         studentVideo.srcObject =
-        localStream;
+        localVideoStream;
 
         studentVideo.autoplay =
         true;
@@ -596,27 +597,15 @@ async function initializeMedia(){
 
         });
 
-        localVideoTrack =
-        localStream
-        .getVideoTracks()[0];
+        setTimeout(() => {
 
-        localAudioTrack =
-        localStream
-        .getAudioTracks()[0];
+            startFaceDetection();
 
-        /*
-        AUDIO INITIALLY OFF
-        */
-
-        localAudioTrack.enabled =
-        false;
+        }, 1000);
 
     }catch(err){
 
         console.log(err);
-
-        errorBox.innerText =
-        "Camera/Microphone access denied";
 
     }
 
@@ -624,7 +613,40 @@ async function initializeMedia(){
 
 
 /* =========================
-   START VIDEO
+   AUDIO INIT
+========================= */
+
+async function initializeAudio(){
+
+    try{
+
+        localAudioStream =
+        await navigator
+        .mediaDevices
+        .getUserMedia({
+
+            audio:true
+
+        });
+
+        localAudioTrack =
+        localAudioStream
+        .getAudioTracks()[0];
+
+        localAudioTrack.enabled =
+        !muted;
+
+    }catch(err){
+
+        console.log(err);
+
+    }
+
+}
+
+
+/* =========================
+   START VIDEO STREAM
 ========================= */
 
 async function startVideoStreaming(){
@@ -633,15 +655,11 @@ async function startVideoStreaming(){
 
         createPeerConnection();
 
-        /*
-        VIDEO ONLY
-        */
-
         peerConnection.addTrack(
 
             localVideoTrack,
 
-            localStream
+            localVideoStream
 
         );
 
@@ -698,6 +716,9 @@ function addAudioTrack(){
 
     if(alreadyAdded){
 
+        localAudioTrack.enabled =
+        !muted;
+
         return;
 
     }
@@ -706,7 +727,7 @@ function addAudioTrack(){
 
         localAudioTrack,
 
-        localStream
+        localAudioStream
 
     );
 
@@ -725,10 +746,15 @@ function stopStreaming(){
     voiceStarted =
     false;
 
+    if(localVideoTrack){
+
+        localVideoTrack.stop();
+
+    }
+
     if(localAudioTrack){
 
-        localAudioTrack.enabled =
-        false;
+        localAudioTrack.stop();
 
     }
 
@@ -740,6 +766,12 @@ function stopStreaming(){
         null;
 
     }
+
+    studentVideo.srcObject =
+    null;
+
+    remoteAudio.srcObject =
+    null;
 
     createSystemMessage(
         "Streaming Stopped"
@@ -826,16 +858,11 @@ function createPeerConnection(){
     peerConnection.ontrack =
     async (event) => {
 
-        console.log(
-            "TRACK:",
-            event.track.kind
-        );
-
         const remoteStream =
         event.streams[0];
 
         /*
-        SIR AUDIO
+        PROFESSOR AUDIO
         */
 
         if(
@@ -885,19 +912,6 @@ function createPeerConnection(){
             });
 
         }
-
-    };
-
-    peerConnection.onconnectionstatechange =
-    () => {
-
-        console.log(
-
-            "RTC STATE:",
-
-            peerConnection.connectionState
-
-        );
 
     };
 
@@ -1000,10 +1014,7 @@ async function loadFaceModels(){
 
 async function startFaceDetection(){
 
-    const loaded =
-    await loadFaceModels();
-
-    if(!loaded){
+    if(!localVideoStream){
 
         return;
 
@@ -1051,6 +1062,7 @@ async function startFaceDetection(){
                 );
 
                 return;
+
             }
 
             const nose =
@@ -1101,22 +1113,10 @@ function startMonitoring(){
     monitorInterval =
     setInterval(() => {
 
-        if(!localStream){
-
-            return;
-
-        }
-
-        const tracks =
-        localStream
-        .getVideoTracks();
-
-        if(
-            tracks.length === 0
-        ){
+        if(document.hidden){
 
             sendCheatingAlert(
-                "Camera disconnected"
+                "Tab switched"
             );
 
         }
@@ -1145,7 +1145,7 @@ function sendCheatingAlert(text){
 
 
 /* =========================
-   SPEECH
+   SPEECH API
 ========================= */
 
 if(
@@ -1198,15 +1198,25 @@ if(
 
 
 /* =========================
-   RECORD
+   RECORD ANSWER
 ========================= */
 
 recordBtn.onclick =
 () => {
 
-    if(recognition){
+    if(!recognition){
+
+        return;
+
+    }
+
+    try{
 
         recognition.start();
+
+    }catch(err){
+
+        console.log(err);
 
     }
 
@@ -1214,7 +1224,7 @@ recordBtn.onclick =
 
 
 /* =========================
-   STOP
+   STOP RECORDING
 ========================= */
 
 stopBtn.onclick =
@@ -1381,8 +1391,7 @@ muteBtn.onclick =
     if(localAudioTrack){
 
         localAudioTrack.enabled =
-        !muted &&
-        voiceStarted;
+        !muted;
 
     }
 
@@ -1480,54 +1489,6 @@ function updateSocketStatus(connected){
     `;
 
 }
-
-
-/* =========================
-   TAB SWITCH
-========================= */
-
-document.addEventListener(
-
-    "visibilitychange",
-
-    () => {
-
-        if(document.hidden){
-
-            sendCheatingAlert(
-                "Tab switched"
-            );
-
-        }
-
-    }
-
-);
-
-
-/* =========================
-   FULLSCREEN
-========================= */
-
-document.addEventListener(
-
-    "fullscreenchange",
-
-    () => {
-
-        if(
-            !document.fullscreenElement
-        ){
-
-            sendCheatingAlert(
-                "Fullscreen exited"
-            );
-
-        }
-
-    }
-
-);
 
 
 /* =========================
