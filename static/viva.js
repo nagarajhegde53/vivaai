@@ -1,9 +1,12 @@
 /* =========================================================
    FINAL ADVANCED viva.js
-   FULLY FIXED
-   BACKEND COMPATIBLE
-   HTML/CSS COMPATIBLE
-   NO ROLLBACK
+   FULLY BUG FIXED
+   PROFESSIONAL STABLE VERSION
+   COMPATIBLE WITH:
+   - YOUR HTML
+   - YOUR CSS
+   - YOUR BACKEND
+   - FINAL sir_dashboard.js
 ========================================================= */
 
 
@@ -148,8 +151,6 @@ let tempAnswer = "";
 
 let muted = false;
 
-let micEnabled = false;
-
 let faceDetectionInterval = null;
 
 let monitorInterval = null;
@@ -159,6 +160,12 @@ let faceModelsLoaded = false;
 let alreadyConnected = false;
 
 let makingOffer = false;
+
+let localAudioTrack = null;
+
+let localVideoTrack = null;
+
+let professorVoiceActive = false;
 
 
 /* =========================
@@ -208,7 +215,7 @@ async () => {
 
         await connectSocket();
 
-        await startCamera();
+        await startMedia();
 
     }catch(err){
 
@@ -301,23 +308,18 @@ async function connectSocket(){
         socket.onmessage =
         async (event) => {
 
-            console.log(
-                "RAW SOCKET:",
-                event.data
-            );
-
             const msg =
             JSON.parse(
                 event.data
             );
 
             console.log(
-                "PARSED:",
+                "SOCKET:",
                 msg
             );
 
             /* =====================
-               PREVENT SELF DUPLICATE
+               SELF FILTER
             ===================== */
 
             if(
@@ -335,8 +337,7 @@ async function connectSocket(){
 
             if(
                 msg.type ===
-                "question" &&
-                msg.text
+                "question"
             ){
 
                 tempQuestion =
@@ -353,26 +354,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               CHAT
-            ===================== */
-
-            if(
-                msg.type ===
-                "chat"
-            ){
-
-                createBubble(
-
-                    msg.text,
-
-                    "question"
-
-                );
-
-            }
-
-            /* =====================
-               MIC REQUEST
+               PROFESSOR MIC ON
             ===================== */
 
             if(
@@ -380,8 +362,68 @@ async function connectSocket(){
                 "sir-mic-on"
             ){
 
+                professorVoiceActive =
+                true;
+
+                if(localAudioTrack){
+
+                    localAudioTrack.enabled =
+                    true;
+
+                }
+
                 voicePopup.style.display =
                 "flex";
+
+                voicePopup.querySelector(
+                    "p"
+                ).innerText =
+
+                "Professor microphone is now active.";
+
+            }
+
+            /* =====================
+               PROFESSOR MIC OFF
+            ===================== */
+
+            if(
+                msg.type ===
+                "sir-mic-off"
+            ){
+
+                professorVoiceActive =
+                false;
+
+                if(localAudioTrack){
+
+                    localAudioTrack.enabled =
+                    false;
+
+                }
+
+                voicePopup.style.display =
+                "flex";
+
+                voicePopup.querySelector(
+                    "p"
+                ).innerText =
+
+                "Professor ended voice communication.";
+
+            }
+
+            /* =====================
+               HIDE POPUP
+            ===================== */
+
+            if(
+                msg.type ===
+                "hide-popup"
+            ){
+
+                voicePopup.style.display =
+                "none";
 
             }
 
@@ -421,17 +463,14 @@ async function connectSocket(){
                         );
 
                         createSystemMessage(
-                            "Video Connected"
+                            "Connected To Professor"
                         );
 
                     }
 
                 }catch(err){
 
-                    console.log(
-                        "ANSWER ERROR:",
-                        err
-                    );
+                    console.log(err);
 
                 }
 
@@ -475,10 +514,7 @@ async function connectSocket(){
 
                 }catch(err){
 
-                    console.log(
-                        "ICE ERROR:",
-                        err
-                    );
+                    console.log(err);
 
                 }
 
@@ -492,10 +528,10 @@ async function connectSocket(){
 
 
 /* =========================
-   START CAMERA
+   START MEDIA
 ========================= */
 
-async function startCamera(){
+async function startMedia(){
 
     try{
 
@@ -509,31 +545,29 @@ async function startCamera(){
                 height:720
             },
 
-            audio:false
+            audio:true
 
         });
 
         studentVideo.srcObject =
         localStream;
 
-        studentVideo.muted =
-        true;
-
-        studentVideo.playsInline =
-        true;
-
         await studentVideo.play();
 
-        await new Promise(resolve => {
+        localVideoTrack =
+        localStream
+        .getVideoTracks()[0];
 
-            studentVideo.onloadedmetadata =
-            () => {
+        localAudioTrack =
+        localStream
+        .getAudioTracks()[0];
 
-                resolve();
+        /* =====================
+           AUDIO STARTS MUTED
+        ===================== */
 
-            };
-
-        });
+        localAudioTrack.enabled =
+        false;
 
         createPeerConnection();
 
@@ -550,37 +584,34 @@ async function startCamera(){
 
         await createAndSendOffer();
 
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
+        socket.send(
 
-            socket.send(
+            JSON.stringify({
 
-                JSON.stringify({
+                senderId:
+                mySocketId,
 
-                    senderId:
-                    mySocketId,
+                type:
+                "student-camera-on"
 
-                    type:
-                    "student-camera-on"
+            })
 
-                })
+        );
 
-            );
+        setTimeout(async () => {
 
-        }
+            await startFaceDetection();
+
+        }, 3000);
 
         startMonitoring();
-
-        startFaceDetection();
 
     }catch(err){
 
         console.log(err);
 
         errorBox.innerText =
-        "Camera access denied";
+        "Camera/Microphone access denied";
 
     }
 
@@ -588,7 +619,7 @@ async function startCamera(){
 
 
 /* =========================
-   CREATE OFFER
+   OFFER
 ========================= */
 
 async function createAndSendOffer(){
@@ -638,10 +669,7 @@ async function createAndSendOffer(){
 
         makingOffer = false;
 
-        console.log(
-            "OFFER ERROR:",
-            err
-        );
+        console.log(err);
 
     }
 
@@ -708,7 +736,7 @@ async function waitForIceComplete(){
 
 
 /* =========================
-   PEER CONNECTION
+   PEER
 ========================= */
 
 function createPeerConnection(){
@@ -728,33 +756,15 @@ function createPeerConnection(){
 
     );
 
-    peerConnection.onconnectionstatechange =
-    () => {
+    peerConnection.addTransceiver(
 
-        console.log(
+        "audio",
 
-            "CONNECTION:",
+        {
+            direction:"sendrecv"
+        }
 
-            peerConnection
-            .connectionState
-
-        );
-
-    };
-
-    peerConnection.oniceconnectionstatechange =
-    () => {
-
-        console.log(
-
-            "ICE:",
-
-            peerConnection
-            .iceConnectionState
-
-        );
-
-    };
+    );
 
     peerConnection.ontrack =
     async (event) => {
@@ -766,6 +776,10 @@ function createPeerConnection(){
 
         const remoteStream =
         event.streams[0];
+
+        /* =====================
+           PROFESSOR AUDIO
+        ===================== */
 
         if(
             event.track.kind ===
@@ -787,10 +801,7 @@ function createPeerConnection(){
             remoteAudio.play()
             .catch(err => {
 
-                console.log(
-                    "AUDIO BLOCKED:",
-                    err
-                );
+                console.log(err);
 
             });
 
@@ -832,61 +843,6 @@ function createPeerConnection(){
 
 
 /* =========================
-   ENABLE MIC
-========================= */
-
-enableVoiceBtn.onclick =
-async () => {
-
-    try{
-
-        if(micEnabled){
-
-            return;
-
-        }
-
-        micEnabled = true;
-
-        voicePopup.style.display =
-        "none";
-
-        const micStream =
-
-        await navigator
-        .mediaDevices
-        .getUserMedia({
-
-            audio:true
-
-        });
-
-        const audioTrack =
-
-        micStream
-        .getAudioTracks()[0];
-
-        peerConnection.addTrack(
-            audioTrack,
-            micStream
-        );
-
-        await createAndSendOffer();
-
-        createSystemMessage(
-            "Microphone Enabled"
-        );
-
-    }catch(err){
-
-        console.log(err);
-
-    }
-
-};
-
-
-/* =========================
    FACE MODELS
 ========================= */
 
@@ -910,20 +866,28 @@ async function loadFaceModels(){
 
         }
 
-        await faceapi.nets
-        .tinyFaceDetector
-        .loadFromUri(
-            "/static/models"
-        );
+        await Promise.all([
 
-        await faceapi.nets
-        .faceLandmark68Net
-        .loadFromUri(
-            "/static/models"
-        );
+            faceapi.nets
+            .tinyFaceDetector
+            .loadFromUri(
+                "/static/models"
+            ),
+
+            faceapi.nets
+            .faceLandmark68Net
+            .loadFromUri(
+                "/static/models"
+            )
+
+        ]);
 
         faceModelsLoaded =
         true;
+
+        createSystemMessage(
+            "Face Detection Active"
+        );
 
         return true;
 
@@ -995,7 +959,6 @@ async function startFaceDetection(){
                 );
 
                 return;
-
             }
 
             const nose =
@@ -1028,10 +991,7 @@ async function startFaceDetection(){
 
         }catch(err){
 
-            console.log(
-                "FACE ERROR:",
-                err
-            );
+            console.log(err);
 
         }
 
@@ -1083,39 +1043,32 @@ function startMonitoring(){
 
 
 /* =========================
-   CHEATING ALERT
+   CHEATING
 ========================= */
 
 function sendCheatingAlert(text){
 
-    if(
-        socket &&
-        socket.readyState === 1
-    ){
+    socket.send(
 
-        socket.send(
+        JSON.stringify({
 
-            JSON.stringify({
+            senderId:
+            mySocketId,
 
-                senderId:
-                mySocketId,
+            type:
+            "cheating-alert",
 
-                type:
-                "cheating-alert",
+            text:text
 
-                text:text
+        })
 
-            })
-
-        );
-
-    }
+    );
 
 }
 
 
 /* =========================
-   SPEECH RECOGNITION
+   RECORD
 ========================= */
 
 if(
@@ -1149,44 +1102,27 @@ if(
         text;
 
         createBubble(
-
             text,
-
             "answer"
+        );
+
+        socket.send(
+
+            JSON.stringify({
+
+                senderId:
+                mySocketId,
+
+                type:
+                "answer",
+
+                text:text
+
+            })
 
         );
 
-        if(
-            socket &&
-            socket.readyState === 1
-        ){
-
-            socket.send(
-
-                JSON.stringify({
-
-                    senderId:
-                    mySocketId,
-
-                    type:
-                    "answer",
-
-                    text:text
-
-                })
-
-            );
-
-        }
-
         try{
-
-            if(!tempQuestion){
-
-                tempQuestion =
-                "Unknown Question";
-
-            }
 
             const res =
             await fetch(
@@ -1207,7 +1143,8 @@ if(
                         question:
                         tempQuestion,
 
-                        answer:text
+                        answer:
+                        text
 
                     })
 
@@ -1219,8 +1156,7 @@ if(
             await res.json();
 
             if(
-                data.success &&
-                data.analysis
+                data.success
             ){
 
                 socket.send(
@@ -1254,7 +1190,7 @@ if(
 
 
 /* =========================
-   RECORD
+   RECORD BTN
 ========================= */
 
 recordBtn.onclick = () => {
@@ -1273,7 +1209,7 @@ recordBtn.onclick = () => {
 
 
 /* =========================
-   STOP
+   STOP BTN
 ========================= */
 
 stopBtn.onclick = () => {
@@ -1325,7 +1261,7 @@ storeBtn.onclick = () => {
 
 
 /* =========================
-   RENDER STORED
+   STORED
 ========================= */
 
 function renderStored(){
@@ -1438,6 +1374,14 @@ muteBtn.onclick = () => {
 
     muted = !muted;
 
+    if(localAudioTrack){
+
+        localAudioTrack.enabled =
+        !muted &&
+        professorVoiceActive;
+
+    }
+
     muteBtn.innerText =
 
     muted
@@ -1454,7 +1398,7 @@ muteBtn.onclick = () => {
 
 
 /* =========================
-   CHAT
+   BUBBLE
 ========================= */
 
 function createBubble(text,type){
@@ -1513,12 +1457,6 @@ function createSystemMessage(text){
 
 function updateSocketStatus(connected){
 
-    if(!socketStatus){
-
-        return;
-
-    }
-
     socketStatus.innerHTML =
 
     connected
@@ -1549,7 +1487,9 @@ function updateSocketStatus(connected){
 ========================= */
 
 document.addEventListener(
+
     "visibilitychange",
+
     () => {
 
         if(document.hidden){
@@ -1561,15 +1501,18 @@ document.addEventListener(
         }
 
     }
+
 );
 
 
 /* =========================
-   FULLSCREEN EXIT
+   FULLSCREEN
 ========================= */
 
 document.addEventListener(
+
     "fullscreenchange",
+
     () => {
 
         if(
@@ -1583,11 +1526,12 @@ document.addEventListener(
         }
 
     }
+
 );
 
 
 /* =========================
-   BACK BUTTON
+   BACK
 ========================= */
 
 function goBack(){

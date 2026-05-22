@@ -1,9 +1,12 @@
 /* =========================================================
    FINAL ADVANCED sir_dashboard.js
-   FULLY FIXED
-   BACKEND COMPATIBLE
-   HTML/CSS COMPATIBLE
-   NO ROLLBACK
+   FULLY BUG FIXED
+   PROFESSIONAL STABLE VERSION
+   COMPATIBLE WITH:
+   - YOUR HTML
+   - YOUR CSS
+   - YOUR BACKEND
+   - FINAL viva.js
 ========================================================= */
 
 
@@ -24,21 +27,6 @@ document.getElementById(
 const remoteAudio =
 document.getElementById(
     "remoteAudio"
-);
-
-const chatBox =
-document.querySelector(
-    ".chat-box"
-);
-
-const chatInput =
-document.getElementById(
-    "chatInput"
-);
-
-const sendBtn =
-document.getElementById(
-    "sendBtn"
 );
 
 const questionInput =
@@ -84,6 +72,26 @@ document.querySelector(
 const logoutBtn =
 document.getElementById(
     "logoutBtn"
+);
+
+const toggleVoiceBtn =
+document.getElementById(
+    "toggleVoiceBtn"
+);
+
+const endVoiceBtn =
+document.getElementById(
+    "endVoiceBtn"
+);
+
+const muteBtn =
+document.getElementById(
+    "muteBtn"
+);
+
+const voiceChatBtn =
+document.getElementById(
+    "voiceChatBtn"
 );
 
 
@@ -142,6 +150,14 @@ let alreadyConnected = false;
 
 let makingAnswer = false;
 
+let professorStream = null;
+
+let professorAudioTrack = null;
+
+let voiceModeEnabled = false;
+
+let muted = false;
+
 
 /* =========================
    RTC CONFIG
@@ -167,6 +183,46 @@ const rtcConfig = {
     sdpSemantics:"unified-plan"
 
 };
+
+
+/* =========================
+   LOAD PROFESSOR MIC
+========================= */
+
+async function initProfessorAudio(){
+
+    try{
+
+        professorStream =
+        await navigator
+        .mediaDevices
+        .getUserMedia({
+
+            audio:true
+
+        });
+
+        professorAudioTrack =
+        professorStream
+        .getAudioTracks()[0];
+
+        /* =====================
+           START MUTED
+        ===================== */
+
+        professorAudioTrack.enabled =
+        false;
+
+    }catch(err){
+
+        console.log(
+            "MIC ERROR:",
+            err
+        );
+
+    }
+
+}
 
 
 /* =========================
@@ -278,7 +334,7 @@ function renderStudents(){
    CONNECT STUDENT
 ========================= */
 
-function connectToStudent(roomId){
+async function connectToStudent(roomId){
 
     selectedRoom =
     roomId;
@@ -287,7 +343,7 @@ function connectToStudent(roomId){
         "Connecting..."
     );
 
-    connectSocket();
+    await connectSocket();
 
 }
 
@@ -296,408 +352,352 @@ function connectToStudent(roomId){
    SOCKET
 ========================= */
 
-function connectSocket(){
+async function connectSocket(){
 
-    if(socket){
+    return new Promise((resolve,reject) => {
 
-        socket.close();
+        if(socket){
 
-    }
+            socket.close();
 
-    const protocol =
+        }
 
-    location.protocol ===
-    "https:"
+        const protocol =
 
-    ?
+        location.protocol ===
+        "https:"
 
-    "wss"
+        ?
 
-    :
+        "wss"
 
-    "ws";
+        :
 
-    socket =
-    new WebSocket(
+        "ws";
 
-        `${protocol}://${location.host}/ws/viva/${selectedRoom}`
+        socket =
+        new WebSocket(
 
-    );
+            `${protocol}://${location.host}/ws/viva/${selectedRoom}`
 
-    socket.onopen = () => {
-
-        reconnecting = false;
-
-        updateConnectionStatus(
-            true
         );
 
-        if(!alreadyConnected){
+        socket.onopen = () => {
 
-            createSystemMessage(
-                "Connected"
+            reconnecting = false;
+
+            updateConnectionStatus(
+                true
             );
 
-            alreadyConnected = true;
+            if(!alreadyConnected){
 
-        }
-
-    };
-
-    socket.onclose = () => {
-
-        updateConnectionStatus(
-            false
-        );
-
-        if(!reconnecting){
-
-            reconnecting = true;
-
-            reconnectTimeout =
-            setTimeout(() => {
-
-                connectSocket();
-
-            }, 3000);
-
-        }
-
-    };
-
-    socket.onerror = (err) => {
-
-        console.log(err);
-
-    };
-
-    socket.onmessage =
-    async (event) => {
-
-        console.log(
-            "RAW SOCKET:",
-            event.data
-        );
-
-        const msg =
-        JSON.parse(
-            event.data
-        );
-
-        console.log(
-            "PARSED:",
-            msg
-        );
-
-        /* =====================
-           PREVENT SELF DUPLICATE
-        ===================== */
-
-        if(
-            msg.senderId ===
-            mySocketId
-        ){
-
-            return;
-
-        }
-
-        /* =====================
-           QUESTION
-        ===================== */
-
-        if(
-            msg.type ===
-            "question" &&
-            msg.text
-        ){
-
-            addTranscript(
-                "Professor",
-                msg.text
-            );
-
-            createBubble(
-
-                `Q: ${msg.text}`,
-
-                "ai"
-
-            );
-
-        }
-
-        /* =====================
-           ANSWER
-        ===================== */
-
-        if(
-            (
-                msg.type ===
-                "answer" ||
-
-                msg.type ===
-                "student-answer"
-            )
-
-            &&
-
-            msg.text
-        ){
-
-            addTranscript(
-                "Student",
-                msg.text
-            );
-
-            createBubble(
-
-                `A: ${msg.text}`,
-
-                "student"
-
-            );
-
-        }
-
-        /* =====================
-           CHAT
-        ===================== */
-
-        if(
-            msg.type ===
-            "chat"
-        ){
-
-            createBubble(
-
-                msg.text,
-
-                "ai"
-
-            );
-
-        }
-
-        /* =====================
-           LIVE ANALYSIS
-        ===================== */
-
-        if(
-            (
-                msg.type ===
-                "live-analysis" ||
-
-                msg.type ===
-                "analysis"
-            )
-
-            &&
-
-            msg.analysis
-        ){
-
-            updateAIAnalysis(
-                msg.analysis
-            );
-
-        }
-
-        /* =====================
-           CHEATING ALERT
-        ===================== */
-
-        if(
-            msg.type ===
-            "cheating-alert"
-        ){
-
-            addMonitoringMessage(
-                msg.text
-            );
-
-        }
-
-        /* =====================
-           CAMERA ACTIVE
-        ===================== */
-
-        if(
-            msg.type ===
-            "student-camera-on"
-        ){
-
-            createSystemMessage(
-                "Student Camera Active"
-            );
-
-        }
-
-        /* =====================
-           WEBRTC OFFER
-        ===================== */
-
-        if(
-            msg.type ===
-            "webrtc-offer"
-        ){
-
-            try{
-
-                if(!peerConnection){
-
-                    createPeerConnection();
-
-                }
-
-                const offerDesc =
-
-                new RTCSessionDescription(
-                    msg.offer
+                createSystemMessage(
+                    "Connected"
                 );
 
-                if(
-                    !peerConnection
-                    .currentRemoteDescription
-                ){
+                alreadyConnected = true;
 
-                    await peerConnection
-                    .setRemoteDescription(
-                        offerDesc
+            }
+
+            resolve();
+
+        };
+
+        socket.onerror = (err) => {
+
+            console.log(err);
+
+            reject(err);
+
+        };
+
+        socket.onclose = () => {
+
+            updateConnectionStatus(
+                false
+            );
+
+            if(!reconnecting){
+
+                reconnecting = true;
+
+                reconnectTimeout =
+                setTimeout(() => {
+
+                    connectSocket();
+
+                }, 3000);
+
+            }
+
+        };
+
+        socket.onmessage =
+        async (event) => {
+
+            const msg =
+            JSON.parse(
+                event.data
+            );
+
+            console.log(
+                "SOCKET:",
+                msg
+            );
+
+            /* =====================
+               SELF FILTER
+            ===================== */
+
+            if(
+                msg.senderId ===
+                mySocketId
+            ){
+
+                return;
+
+            }
+
+            /* =====================
+               QUESTION
+            ===================== */
+
+            if(
+                msg.type ===
+                "question"
+            ){
+
+                addTranscript(
+                    "Professor",
+                    msg.text
+                );
+
+            }
+
+            /* =====================
+               ANSWER
+            ===================== */
+
+            if(
+                msg.type ===
+                "answer"
+            ){
+
+                addTranscript(
+                    "Student",
+                    msg.text
+                );
+
+            }
+
+            /* =====================
+               ANALYSIS
+            ===================== */
+
+            if(
+                msg.type ===
+                "live-analysis"
+            ){
+
+                updateAIAnalysis(
+                    msg.analysis
+                );
+
+            }
+
+            /* =====================
+               CHEATING
+            ===================== */
+
+            if(
+                msg.type ===
+                "cheating-alert"
+            ){
+
+                addMonitoringMessage(
+                    msg.text
+                );
+
+            }
+
+            /* =====================
+               CAMERA ACTIVE
+            ===================== */
+
+            if(
+                msg.type ===
+                "student-camera-on"
+            ){
+
+                createSystemMessage(
+                    "Student Camera Active"
+                );
+
+            }
+
+            /* =====================
+               WEBRTC OFFER
+            ===================== */
+
+            if(
+                msg.type ===
+                "webrtc-offer"
+            ){
+
+                try{
+
+                    if(!peerConnection){
+
+                        createPeerConnection();
+
+                    }
+
+                    const offerDesc =
+
+                    new RTCSessionDescription(
+                        msg.offer
                     );
 
+                    if(
+                        !peerConnection
+                        .currentRemoteDescription
+                    ){
+
+                        await peerConnection
+                        .setRemoteDescription(
+                            offerDesc
+                        );
+
+                    }
+
+                    if(makingAnswer){
+
+                        return;
+
+                    }
+
+                    makingAnswer = true;
+
+                    const answer =
+
+                    await peerConnection
+                    .createAnswer();
+
+                    await peerConnection
+                    .setLocalDescription(
+                        answer
+                    );
+
+                    await waitForIceComplete();
+
+                    socket.send(
+
+                        JSON.stringify({
+
+                            senderId:
+                            mySocketId,
+
+                            type:
+                            "webrtc-answer",
+
+                            answer:
+                            peerConnection
+                            .localDescription
+
+                        })
+
+                    );
+
+                    makingAnswer = false;
+
+                    for(
+                        const candidate
+                        of pendingCandidates
+                    ){
+
+                        try{
+
+                            await peerConnection
+                            .addIceCandidate(
+
+                                new RTCIceCandidate(
+                                    candidate
+                                )
+
+                            );
+
+                        }catch(err){
+
+                            console.log(err);
+
+                        }
+
+                    }
+
+                    pendingCandidates = [];
+
+                    createSystemMessage(
+                        "Video Connected"
+                    );
+
+                }catch(err){
+
+                    makingAnswer = false;
+
+                    console.log(err);
+
                 }
 
-                if(makingAnswer){
+            }
 
-                    return;
+            /* =====================
+               ICE
+            ===================== */
 
-                }
+            if(
+                msg.type ===
+                "ice-candidate"
+            ){
 
-                makingAnswer = true;
+                try{
 
-                const answer =
-
-                await peerConnection
-                .createAnswer();
-
-                await peerConnection
-                .setLocalDescription(
-                    answer
-                );
-
-                await waitForIceComplete();
-
-                socket.send(
-
-                    JSON.stringify({
-
-                        senderId:
-                        mySocketId,
-
-                        type:
-                        "webrtc-answer",
-
-                        answer:
-                        peerConnection.localDescription
-
-                    })
-
-                );
-
-                makingAnswer = false;
-
-                for(
-                    const candidate
-                    of pendingCandidates
-                ){
-
-                    try{
+                    if(
+                        peerConnection &&
+                        peerConnection
+                        .remoteDescription
+                    ){
 
                         await peerConnection
                         .addIceCandidate(
 
                             new RTCIceCandidate(
-                                candidate
+                                msg.candidate
                             )
 
                         );
 
-                    }catch(err){
+                    }
 
-                        console.log(err);
+                    else{
+
+                        pendingCandidates.push(
+                            msg.candidate
+                        );
 
                     }
 
+                }catch(err){
+
+                    console.log(err);
+
                 }
-
-                pendingCandidates = [];
-
-                createSystemMessage(
-                    "Video Connected"
-                );
-
-            }catch(err){
-
-                makingAnswer = false;
-
-                console.log(
-                    "ANSWER ERROR:",
-                    err
-                );
 
             }
 
-        }
+        };
 
-        /* =====================
-           ICE
-        ===================== */
-
-        if(
-            msg.type ===
-            "ice-candidate"
-        ){
-
-            try{
-
-                if(
-                    peerConnection &&
-                    peerConnection
-                    .remoteDescription
-                ){
-
-                    await peerConnection
-                    .addIceCandidate(
-
-                        new RTCIceCandidate(
-                            msg.candidate
-                        )
-
-                    );
-
-                }
-
-                else{
-
-                    pendingCandidates.push(
-                        msg.candidate
-                    );
-
-                }
-
-            }catch(err){
-
-                console.log(
-                    "ICE ERROR:",
-                    err
-                );
-
-            }
-
-        }
-
-    };
+    });
 
 }
 
@@ -782,33 +782,36 @@ function createPeerConnection(){
 
     );
 
-    peerConnection.onconnectionstatechange =
-    () => {
+    peerConnection.addTransceiver(
 
-        console.log(
+        "audio",
 
-            "CONNECTION:",
+        {
+            direction:"sendrecv"
+        }
 
-            peerConnection
-            .connectionState
+    );
 
-        );
+    /* =====================
+       ADD PROFESSOR AUDIO
+    ===================== */
 
-    };
+    if(
+        professorStream
+    ){
 
-    peerConnection.oniceconnectionstatechange =
-    () => {
+        professorStream
+        .getTracks()
+        .forEach(track => {
 
-        console.log(
+            peerConnection.addTrack(
+                track,
+                professorStream
+            );
 
-            "ICE:",
+        });
 
-            peerConnection
-            .iceConnectionState
-
-        );
-
-    };
+    }
 
     peerConnection.ontrack =
     async (event) => {
@@ -820,6 +823,10 @@ function createPeerConnection(){
 
         const remoteStream =
         event.streams[0];
+
+        /* =====================
+           STUDENT VIDEO
+        ===================== */
 
         if(
             event.track.kind ===
@@ -847,22 +854,19 @@ function createPeerConnection(){
 
                     await liveVideo.play();
 
-                    console.log(
-                        "VIDEO PLAYING"
-                    );
-
                 }catch(err){
 
-                    console.log(
-                        "VIDEO PLAY ERROR:",
-                        err
-                    );
+                    console.log(err);
 
                 }
 
             }, 300);
 
         }
+
+        /* =====================
+           STUDENT AUDIO
+        ===================== */
 
         if(
             event.track.kind ===
@@ -881,13 +885,22 @@ function createPeerConnection(){
             remoteAudio.muted =
             false;
 
+            remoteAudio.volume =
+
+            voiceModeEnabled
+
+            ?
+
+            1
+
+            :
+
+            0;
+
             remoteAudio.play()
             .catch(err => {
 
-                console.log(
-                    "AUDIO ERROR:",
-                    err
-                );
+                console.log(err);
 
             });
 
@@ -929,6 +942,132 @@ function createPeerConnection(){
 
 
 /* =========================
+   START TALKING
+========================= */
+
+toggleVoiceBtn.onclick =
+() => {
+
+    if(
+        !professorAudioTrack
+    ){
+
+        return;
+
+    }
+
+    voiceModeEnabled =
+    true;
+
+    professorAudioTrack.enabled =
+    true;
+
+    remoteAudio.volume =
+    1;
+
+    socket.send(
+
+        JSON.stringify({
+
+            senderId:
+            mySocketId,
+
+            type:
+            "sir-mic-on"
+
+        })
+
+    );
+
+    createSystemMessage(
+        "Voice Communication Started"
+    );
+
+};
+
+
+/* =========================
+   END VOICE
+========================= */
+
+endVoiceBtn.onclick =
+() => {
+
+    if(
+        !professorAudioTrack
+    ){
+
+        return;
+
+    }
+
+    voiceModeEnabled =
+    false;
+
+    professorAudioTrack.enabled =
+    false;
+
+    remoteAudio.volume =
+    0;
+
+    socket.send(
+
+        JSON.stringify({
+
+            senderId:
+            mySocketId,
+
+            type:
+            "sir-mic-off"
+
+        })
+
+    );
+
+    createSystemMessage(
+        "Voice Communication Ended"
+    );
+
+};
+
+
+/* =========================
+   MUTE
+========================= */
+
+muteBtn.onclick =
+() => {
+
+    if(
+        !professorAudioTrack
+    ){
+
+        return;
+
+    }
+
+    muted = !muted;
+
+    professorAudioTrack.enabled =
+    !muted &&
+    voiceModeEnabled;
+
+    muteBtn.innerText =
+
+    muted
+
+    ?
+
+    "Unmute"
+
+    :
+
+    "Mute";
+
+};
+
+
+/* =========================
    SEND QUESTION
 ========================= */
 
@@ -953,18 +1092,9 @@ function sendQuestion(){
             type:
             "question",
 
-            text:
-            text
+            text:text
 
         })
-
-    );
-
-    createBubble(
-
-        `Q: ${text}`,
-
-        "ai"
 
     );
 
@@ -980,7 +1110,7 @@ function sendQuestion(){
 
 
 /* =========================
-   VOICE QUESTION
+   VOICE ASK
 ========================= */
 
 if(
@@ -1020,7 +1150,8 @@ if(
 }
 
 
-voiceQuestionBtn.onclick = () => {
+voiceQuestionBtn.onclick =
+() => {
 
     if(recognition){
 
@@ -1031,78 +1162,16 @@ voiceQuestionBtn.onclick = () => {
 };
 
 
-/* =========================
-   SEND CHAT
-========================= */
+voiceChatBtn.onclick =
+() => {
 
-function sendChat(){
+    sendQuestion();
 
-    const text =
-    chatInput.value.trim();
-
-    if(!text){
-
-        return;
-
-    }
-
-    socket.send(
-
-        JSON.stringify({
-
-            senderId:
-            mySocketId,
-
-            type:
-            "chat",
-
-            text:
-            text
-
-        })
-
-    );
-
-    createBubble(
-
-        text,
-
-        "ai"
-
-    );
-
-    chatInput.value =
-    "";
-
-}
-
-
-if(sendBtn){
-
-    sendBtn.onclick =
-    sendChat;
-
-}
-
-
-chatInput.addEventListener(
-    "keypress",
-    (e) => {
-
-        if(
-            e.key === "Enter"
-        ){
-
-            sendChat();
-
-        }
-
-    }
-);
+};
 
 
 /* =========================
-   AI ANALYSIS
+   ANALYSIS
 ========================= */
 
 function updateAIAnalysis(data){
@@ -1272,70 +1341,18 @@ function addTranscript(role,text){
 
 
 /* =========================
-   CHAT
-========================= */
-
-function createBubble(text,type){
-
-    const div =
-    document.createElement(
-        "div"
-    );
-
-    div.className =
-
-    type === "student"
-
-    ?
-
-    "chat-msg"
-
-    :
-
-    "chat-msg ai";
-
-    div.innerText =
-    text;
-
-    chatBox.appendChild(
-        div
-    );
-
-    chatBox.scrollTop =
-    chatBox.scrollHeight;
-
-}
-
-
-/* =========================
-   SYSTEM MESSAGE
+   SYSTEM
 ========================= */
 
 function createSystemMessage(text){
 
-    const div =
-    document.createElement(
-        "div"
-    );
-
-    div.className =
-    "chat-msg ai";
-
-    div.innerText =
-    text;
-
-    chatBox.appendChild(
-        div
-    );
-
-    chatBox.scrollTop =
-    chatBox.scrollHeight;
+    console.log(text);
 
 }
 
 
 /* =========================
-   CONNECTION STATUS
+   CONNECTION
 ========================= */
 
 function updateConnectionStatus(connected){
@@ -1385,10 +1402,16 @@ if(logoutBtn){
    INIT
 ========================= */
 
-loadStudents();
+(async () => {
 
-setInterval(() => {
+    await initProfessorAudio();
 
-    loadStudents();
+    await loadStudents();
 
-}, 5000);
+    setInterval(() => {
+
+        loadStudents();
+
+    }, 5000);
+
+})();
