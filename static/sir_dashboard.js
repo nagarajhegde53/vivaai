@@ -1,12 +1,9 @@
 /* =========================================================
    FINAL ADVANCED sir_dashboard.js
-   FULLY BUG FIXED
-   PROFESSIONAL STABLE VERSION
-   COMPATIBLE WITH:
-   - YOUR HTML
-   - YOUR CSS
-   - YOUR BACKEND
-   - FINAL viva.js
+   FULLY FIXED
+   MOBILE + DESKTOP COMPATIBLE
+   NO FEATURE REMOVED
+   BACKEND + HTML + CSS COMPATIBLE
 ========================================================= */
 
 
@@ -186,7 +183,7 @@ const rtcConfig = {
 
 
 /* =========================
-   LOAD PROFESSOR MIC
+   INIT PROFESSOR AUDIO
 ========================= */
 
 async function initProfessorAudio(){
@@ -492,7 +489,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               ANALYSIS
+               LIVE ANALYSIS
             ===================== */
 
             if(
@@ -507,7 +504,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               CHEATING
+               CHEATING ALERT
             ===================== */
 
             if(
@@ -591,23 +588,30 @@ async function connectSocket(){
 
                     await waitForIceComplete();
 
-                    socket.send(
+                    if(
+                        socket &&
+                        socket.readyState === 1
+                    ){
 
-                        JSON.stringify({
+                        socket.send(
 
-                            senderId:
-                            mySocketId,
+                            JSON.stringify({
 
-                            type:
-                            "webrtc-answer",
+                                senderId:
+                                mySocketId,
 
-                            answer:
-                            peerConnection
-                            .localDescription
+                                type:
+                                "webrtc-answer",
 
-                        })
+                                answer:
+                                peerConnection
+                                .localDescription
 
-                    );
+                            })
+
+                        );
+
+                    }
 
                     makingAnswer = false;
 
@@ -793,7 +797,7 @@ function createPeerConnection(){
     );
 
     /* =====================
-       ADD PROFESSOR AUDIO
+       PROFESSOR AUDIO TRACK
     ===================== */
 
     if(
@@ -836,6 +840,21 @@ function createPeerConnection(){
             liveVideo.srcObject =
             remoteStream;
 
+            liveVideo.setAttribute(
+                "playsinline",
+                true
+            );
+
+            liveVideo.setAttribute(
+                "autoplay",
+                true
+            );
+
+            liveVideo.setAttribute(
+                "muted",
+                true
+            );
+
             liveVideo.autoplay =
             true;
 
@@ -860,7 +879,7 @@ function createPeerConnection(){
 
                 }
 
-            }, 300);
+            }, 500);
 
         }
 
@@ -897,12 +916,16 @@ function createPeerConnection(){
 
             0;
 
-            remoteAudio.play()
-            .catch(err => {
+            setTimeout(() => {
 
-                console.log(err);
+                remoteAudio.play()
+                .catch(err => {
 
-            });
+                    console.log(err);
+
+                });
+
+            }, 500);
 
         }
 
@@ -956,6 +979,19 @@ toggleVoiceBtn.onclick =
 
     }
 
+    if(
+        !socket ||
+        socket.readyState !== 1
+    ){
+
+        console.log(
+            "Socket not connected"
+        );
+
+        return;
+
+    }
+
     voiceModeEnabled =
     true;
 
@@ -987,7 +1023,7 @@ toggleVoiceBtn.onclick =
 
 
 /* =========================
-   END VOICE
+   END TALKING
 ========================= */
 
 endVoiceBtn.onclick =
@@ -996,6 +1032,19 @@ endVoiceBtn.onclick =
     if(
         !professorAudioTrack
     ){
+
+        return;
+
+    }
+
+    if(
+        !socket ||
+        socket.readyState !== 1
+    ){
+
+        console.log(
+            "Socket not connected"
+        );
 
         return;
 
@@ -1082,21 +1131,28 @@ function sendQuestion(){
 
     }
 
-    socket.send(
+    if(
+        socket &&
+        socket.readyState === 1
+    ){
 
-        JSON.stringify({
+        socket.send(
 
-            senderId:
-            mySocketId,
+            JSON.stringify({
 
-            type:
-            "question",
+                senderId:
+                mySocketId,
 
-            text:text
+                type:
+                "question",
 
-        })
+                text:text
 
-    );
+            })
+
+        );
+
+    }
 
     addTranscript(
         "Professor",
@@ -1171,7 +1227,7 @@ voiceChatBtn.onclick =
 
 
 /* =========================
-   ANALYSIS
+   AI ANALYSIS
 ========================= */
 
 function updateAIAnalysis(data){

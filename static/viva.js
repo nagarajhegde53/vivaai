@@ -1,12 +1,9 @@
 /* =========================================================
    FINAL ADVANCED viva.js
-   FULLY BUG FIXED
-   PROFESSIONAL STABLE VERSION
-   COMPATIBLE WITH:
-   - YOUR HTML
-   - YOUR CSS
-   - YOUR BACKEND
-   - FINAL sir_dashboard.js
+   FULLY FIXED
+   MOBILE + DESKTOP COMPATIBLE
+   NO FEATURE REMOVED
+   BACKEND + HTML + CSS COMPATIBLE
 ========================================================= */
 
 
@@ -195,7 +192,7 @@ const rtcConfig = {
 
 
 /* =========================
-   START VIVA
+   START
 ========================= */
 
 startBtn.onclick =
@@ -318,10 +315,6 @@ async function connectSocket(){
                 msg
             );
 
-            /* =====================
-               SELF FILTER
-            ===================== */
-
             if(
                 msg.senderId ===
                 mySocketId
@@ -354,7 +347,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               PROFESSOR MIC ON
+               MIC ON
             ===================== */
 
             if(
@@ -368,23 +361,37 @@ async function connectSocket(){
                 if(localAudioTrack){
 
                     localAudioTrack.enabled =
-                    true;
+                    !muted;
 
                 }
 
                 voicePopup.style.display =
                 "flex";
 
+                const popupText =
                 voicePopup.querySelector(
                     "p"
-                ).innerText =
+                );
 
-                "Professor microphone is now active.";
+                if(popupText){
+
+                    popupText.innerText =
+
+                    "Professor microphone is now active.";
+
+                }
+
+                setTimeout(() => {
+
+                    voicePopup.style.display =
+                    "none";
+
+                }, 3000);
 
             }
 
             /* =====================
-               PROFESSOR MIC OFF
+               MIC OFF
             ===================== */
 
             if(
@@ -405,25 +412,44 @@ async function connectSocket(){
                 voicePopup.style.display =
                 "flex";
 
+                const popupText =
                 voicePopup.querySelector(
                     "p"
-                ).innerText =
+                );
 
-                "Professor ended voice communication.";
+                if(popupText){
+
+                    popupText.innerText =
+
+                    "Professor ended voice communication.";
+
+                }
+
+                setTimeout(() => {
+
+                    voicePopup.style.display =
+                    "none";
+
+                }, 3000);
 
             }
 
             /* =====================
-               HIDE POPUP
+               ANSWER
             ===================== */
 
             if(
                 msg.type ===
-                "hide-popup"
+                "answer"
             ){
 
-                voicePopup.style.display =
-                "none";
+                createBubble(
+
+                    `You: ${msg.text}`,
+
+                    "answer"
+
+                );
 
             }
 
@@ -552,6 +578,30 @@ async function startMedia(){
         studentVideo.srcObject =
         localStream;
 
+        studentVideo.setAttribute(
+            "playsinline",
+            true
+        );
+
+        studentVideo.setAttribute(
+            "autoplay",
+            true
+        );
+
+        studentVideo.setAttribute(
+            "muted",
+            true
+        );
+
+        studentVideo.muted =
+        true;
+
+        studentVideo.playsInline =
+        true;
+
+        studentVideo.autoplay =
+        true;
+
         await studentVideo.play();
 
         localVideoTrack =
@@ -563,7 +613,7 @@ async function startMedia(){
         .getAudioTracks()[0];
 
         /* =====================
-           AUDIO STARTS MUTED
+           AUDIO INITIALLY OFF
         ===================== */
 
         localAudioTrack.enabled =
@@ -584,19 +634,26 @@ async function startMedia(){
 
         await createAndSendOffer();
 
-        socket.send(
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
 
-            JSON.stringify({
+            socket.send(
 
-                senderId:
-                mySocketId,
+                JSON.stringify({
 
-                type:
-                "student-camera-on"
+                    senderId:
+                    mySocketId,
 
-            })
+                    type:
+                    "student-camera-on"
 
-        );
+                })
+
+            );
+
+        }
 
         setTimeout(async () => {
 
@@ -646,22 +703,29 @@ async function createAndSendOffer(){
 
         await waitForIceComplete();
 
-        socket.send(
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
 
-            JSON.stringify({
+            socket.send(
 
-                senderId:
-                mySocketId,
+                JSON.stringify({
 
-                type:
-                "webrtc-offer",
+                    senderId:
+                    mySocketId,
 
-                offer:
-                peerConnection.localDescription
+                    type:
+                    "webrtc-offer",
 
-            })
+                    offer:
+                    peerConnection.localDescription
 
-        );
+                })
+
+            );
+
+        }
 
         makingOffer = false;
 
@@ -777,10 +841,6 @@ function createPeerConnection(){
         const remoteStream =
         event.streams[0];
 
-        /* =====================
-           PROFESSOR AUDIO
-        ===================== */
-
         if(
             event.track.kind ===
             "audio"
@@ -798,12 +858,16 @@ function createPeerConnection(){
             remoteAudio.muted =
             false;
 
-            remoteAudio.play()
-            .catch(err => {
+            setTimeout(() => {
 
-                console.log(err);
+                remoteAudio.play()
+                .catch(err => {
 
-            });
+                    console.log(err);
+
+                });
+
+            }, 500);
 
         }
 
@@ -959,6 +1023,7 @@ async function startFaceDetection(){
                 );
 
                 return;
+
             }
 
             const nose =
@@ -1043,32 +1108,39 @@ function startMonitoring(){
 
 
 /* =========================
-   CHEATING
+   CHEATING ALERT
 ========================= */
 
 function sendCheatingAlert(text){
 
-    socket.send(
+    if(
+        socket &&
+        socket.readyState === 1
+    ){
 
-        JSON.stringify({
+        socket.send(
 
-            senderId:
-            mySocketId,
+            JSON.stringify({
 
-            type:
-            "cheating-alert",
+                senderId:
+                mySocketId,
 
-            text:text
+                type:
+                "cheating-alert",
 
-        })
+                text:text
 
-    );
+            })
+
+        );
+
+    }
 
 }
 
 
 /* =========================
-   RECORD
+   SPEECH RECOGNITION
 ========================= */
 
 if(
@@ -1106,21 +1178,28 @@ if(
             "answer"
         );
 
-        socket.send(
+        if(
+            socket &&
+            socket.readyState === 1
+        ){
 
-            JSON.stringify({
+            socket.send(
 
-                senderId:
-                mySocketId,
+                JSON.stringify({
 
-                type:
-                "answer",
+                    senderId:
+                    mySocketId,
 
-                text:text
+                    type:
+                    "answer",
 
-            })
+                    text:text
 
-        );
+                })
+
+            );
+
+        }
 
         try{
 
@@ -1159,22 +1238,29 @@ if(
                 data.success
             ){
 
-                socket.send(
+                if(
+                    socket &&
+                    socket.readyState === 1
+                ){
 
-                    JSON.stringify({
+                    socket.send(
 
-                        senderId:
-                        mySocketId,
+                        JSON.stringify({
 
-                        type:
-                        "live-analysis",
+                            senderId:
+                            mySocketId,
 
-                        analysis:
-                        data.analysis
+                            type:
+                            "live-analysis",
 
-                    })
+                            analysis:
+                            data.analysis
 
-                );
+                        })
+
+                    );
+
+                }
 
             }
 
@@ -1190,7 +1276,7 @@ if(
 
 
 /* =========================
-   RECORD BTN
+   RECORD
 ========================= */
 
 recordBtn.onclick = () => {
@@ -1209,7 +1295,7 @@ recordBtn.onclick = () => {
 
 
 /* =========================
-   STOP BTN
+   STOP
 ========================= */
 
 stopBtn.onclick = () => {
