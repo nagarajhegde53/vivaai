@@ -1,8 +1,11 @@
 /* =========================================================
-   FINAL ADVANCED viva.js
-   LOW LATENCY + ON DEMAND STREAMING
-   MOBILE + DESKTOP STABLE
-   FULLY COMPATIBLE WITH FINAL sir_dashboard.js
+   FINAL PRODUCTION viva.js
+   FULL ADVANCED VERSION
+   LOW LATENCY
+   ON-DEMAND VIDEO
+   ON-DEMAND AUDIO
+   STABLE WEBSOCKET
+   FINAL ARCHITECTURE
 ========================================================= */
 
 
@@ -103,9 +106,7 @@ if(!userData){
 }
 
 const user =
-JSON.parse(
-    userData
-);
+JSON.parse(userData);
 
 
 /* =========================
@@ -149,15 +150,13 @@ let monitorInterval = null;
 
 let faceModelsLoaded = false;
 
-let professorVoiceActive = false;
-
 let alreadyConnected = false;
-
-let makingOffer = false;
 
 let streamStarted = false;
 
-let voiceConnected = false;
+let voiceStarted = false;
+
+let makingOffer = false;
 
 
 /* =========================
@@ -373,7 +372,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               START STREAM
+               START VIDEO
             ===================== */
 
             if(
@@ -395,7 +394,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               STOP STREAM
+               STOP VIDEO
             ===================== */
 
             if(
@@ -408,7 +407,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               CONNECT VOICE
+               START AUDIO
             ===================== */
 
             if(
@@ -416,23 +415,24 @@ async function connectSocket(){
                 "connect-voice"
             ){
 
-                professorVoiceActive =
+                voiceStarted =
                 true;
 
-                voiceConnected =
-                true;
-
-                if(localAudioTrack){
+                if(
+                    localAudioTrack
+                ){
 
                     localAudioTrack.enabled =
                     !muted;
 
                 }
 
+                addAudioTrack();
+
             }
 
             /* =====================
-               DISCONNECT VOICE
+               STOP AUDIO
             ===================== */
 
             if(
@@ -440,13 +440,12 @@ async function connectSocket(){
                 "disconnect-voice"
             ){
 
-                professorVoiceActive =
+                voiceStarted =
                 false;
 
-                voiceConnected =
-                false;
-
-                if(localAudioTrack){
+                if(
+                    localAudioTrack
+                ){
 
                     localAudioTrack.enabled =
                     false;
@@ -456,7 +455,7 @@ async function connectSocket(){
             }
 
             /* =====================
-               ANSWER
+               WEBRTC ANSWER
             ===================== */
 
             if(
@@ -466,7 +465,9 @@ async function connectSocket(){
 
                 try{
 
-                    if(!peerConnection){
+                    if(
+                        !peerConnection
+                    ){
 
                         return;
 
@@ -550,7 +551,7 @@ async function connectSocket(){
 
 
 /* =========================
-   MEDIA INIT
+   MEDIA
 ========================= */
 
 async function initializeMedia(){
@@ -603,9 +604,9 @@ async function initializeMedia(){
         localStream
         .getAudioTracks()[0];
 
-        /* =====================
-           AUDIO OFF INITIALLY
-        ===================== */
+        /*
+        AUDIO INITIALLY OFF
+        */
 
         localAudioTrack.enabled =
         false;
@@ -623,7 +624,7 @@ async function initializeMedia(){
 
 
 /* =========================
-   START VIDEO STREAM
+   START VIDEO
 ========================= */
 
 async function startVideoStreaming(){
@@ -632,13 +633,16 @@ async function startVideoStreaming(){
 
         createPeerConnection();
 
-        /* =====================
-           VIDEO ONLY
-        ===================== */
+        /*
+        VIDEO ONLY
+        */
 
         peerConnection.addTrack(
+
             localVideoTrack,
+
             localStream
+
         );
 
         await createAndSendOffer();
@@ -664,6 +668,52 @@ async function startVideoStreaming(){
 
 
 /* =========================
+   ADD AUDIO TRACK
+========================= */
+
+function addAudioTrack(){
+
+    if(
+        !peerConnection ||
+        !localAudioTrack
+    ){
+
+        return;
+
+    }
+
+    const alreadyAdded =
+
+    peerConnection
+    .getSenders()
+    .some(sender => {
+
+        return (
+            sender.track &&
+            sender.track.kind ===
+            "audio"
+        );
+
+    });
+
+    if(alreadyAdded){
+
+        return;
+
+    }
+
+    peerConnection.addTrack(
+
+        localAudioTrack,
+
+        localStream
+
+    );
+
+}
+
+
+/* =========================
    STOP STREAM
 ========================= */
 
@@ -672,10 +722,7 @@ function stopStreaming(){
     streamStarted =
     false;
 
-    voiceConnected =
-    false;
-
-    professorVoiceActive =
+    voiceStarted =
     false;
 
     if(localAudioTrack){
@@ -787,6 +834,10 @@ function createPeerConnection(){
         const remoteStream =
         event.streams[0];
 
+        /*
+        SIR AUDIO
+        */
+
         if(
             event.track.kind ===
             "audio"
@@ -803,6 +854,9 @@ function createPeerConnection(){
 
             remoteAudio.muted =
             false;
+
+            remoteAudio.volume =
+            1;
 
             remoteAudio.play()
             .catch(err => {
@@ -844,51 +898,6 @@ function createPeerConnection(){
             peerConnection.connectionState
 
         );
-
-        /* =====================
-           ADD AUDIO ONLY
-           WHEN VOICE CONNECTED
-        ===================== */
-
-        if(
-            peerConnection.connectionState ===
-            "connected"
-        ){
-
-            if(
-                voiceConnected &&
-                localAudioTrack
-            ){
-
-                const alreadyAdded =
-
-                peerConnection
-                .getSenders()
-                .some(sender => {
-
-                    return (
-                        sender.track &&
-                        sender.track.kind ===
-                        "audio"
-                    );
-
-                });
-
-                if(!alreadyAdded){
-
-                    peerConnection.addTrack(
-
-                        localAudioTrack,
-
-                        localStream
-
-                    );
-
-                }
-
-            }
-
-        }
 
     };
 
@@ -1042,7 +1051,6 @@ async function startFaceDetection(){
                 );
 
                 return;
-
             }
 
             const nose =
@@ -1061,14 +1069,6 @@ async function startFaceDetection(){
 
                 sendCheatingAlert(
                     "Looking right"
-                );
-
-            }
-
-            if(nose.y > 260){
-
-                sendCheatingAlert(
-                    "Looking downward"
                 );
 
             }
@@ -1382,7 +1382,7 @@ muteBtn.onclick =
 
         localAudioTrack.enabled =
         !muted &&
-        professorVoiceActive;
+        voiceStarted;
 
     }
 
