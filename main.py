@@ -73,6 +73,17 @@ def init_db():
 
     except:
         pass
+
+    # new column added
+    try:
+
+        cur.execute(
+        "ALTER TABLE users ADD COLUMN profile_pic TEXT"
+    )
+
+    except:
+        pass
+    # end
 app = FastAPI()
 init_db()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -151,6 +162,26 @@ cur.execute("""
     )
     """)
 #coding progress
+# cur.execute("""
+
+# CREATE TABLE IF NOT EXISTS dsa_progress(
+
+#     id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+#     username TEXT,
+
+#     topic TEXT,
+
+#     easy_count INTEGER DEFAULT 0,
+
+#     medium_count INTEGER DEFAULT 0,
+
+#     hard_count INTEGER DEFAULT 0,
+
+#     UNIQUE(username, topic)
+# )
+
+# """)
 cur.execute("""
 
 CREATE TABLE IF NOT EXISTS dsa_progress(
@@ -167,11 +198,16 @@ CREATE TABLE IF NOT EXISTS dsa_progress(
 
     hard_count INTEGER DEFAULT 0,
 
+    total_solved INTEGER DEFAULT 0,
+
+    total_attempted INTEGER DEFAULT 0,
+
+    total_runs INTEGER DEFAULT 0,
+
     UNIQUE(username, topic)
 )
 
 """)
-
 
 conn.commit()
 conn.close()
