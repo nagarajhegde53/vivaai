@@ -6,9 +6,10 @@ from groq import Groq
 import json
 import random
 from groq import Groq
+import os
 import json
 import re
-import os
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -17,11 +18,20 @@ load_dotenv()
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+client = Groq(api_key=os.getenv("GROQ_API_KEY_2"))
 
 #database---------------------------
 def init_db():
     conn = sqlite3.connect("practice.db")
     cur = conn.cursor()
+
+ #user
+    cur.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE
+)
+""")
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS questions(
@@ -87,10 +97,6 @@ CREATE TABLE IF NOT EXISTS coding_questions (
     conn.close()
 
 init_db()
-client = Groq(
-    api_key=os.getenv(
-        "GROQ_API_KEY_2"
-    ))
 
 
 #routes
@@ -514,6 +520,7 @@ from groq import Groq
 import json, re, time
 
 
+
 def generate_coding_questions(company):
 
     all_q = []
@@ -892,7 +899,6 @@ async def hr_evaluate(request: Request):
 from fastapi import WebSocket, WebSocketDisconnect
 from groq import Groq
 import json, re, sqlite3
-
 
 matches = {}
 
