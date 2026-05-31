@@ -131,45 +131,95 @@ def buzzer_page():
 
 
 
-
 @app.post("/api/register")
 async def register(request: Request):
+
     data = await request.json()
-    name = data.get("name")
+
+    name = (
+        data.get("name","")
+        .strip()
+        .lower()
+    )
 
     conn = sqlite3.connect("practice.db")
+
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM users WHERE username=?", (name,))
-    if cur.fetchone():
-        conn.close()
-        return {"success": False, "msg": "Username already exists"}
+    cur.execute(
+        "SELECT * FROM users WHERE username=?",
+        (name,)
+    )
 
-    cur.execute("INSERT INTO users(username) VALUES(?)", (name,))
+    if cur.fetchone():
+
+        conn.close()
+
+        return {
+
+            "success": False,
+
+            "msg": "Username already exists"
+        }
+
+    cur.execute(
+        "INSERT INTO users(username) VALUES(?)",
+        (name,)
+    )
+
     conn.commit()
+
     conn.close()
 
-    return {"success": True}
+    return {
+
+        "success": True,
+
+        "msg": "Registration successful"
+    }
 
 
 @app.post("/api/login")
 async def login(request: Request):
+
     data = await request.json()
-    name = data.get("name")
+
+    name = (
+        data.get("name","")
+        .strip()
+        .lower()
+    )
 
     conn = sqlite3.connect("practice.db")
+
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM users WHERE username=?", (name,))
+    cur.execute(
+        "SELECT * FROM users WHERE username=?",
+        (name,)
+    )
+
     user = cur.fetchone()
 
     conn.close()
 
     if not user:
-        return {"success": False, "msg": "User not found"}
 
-    return {"success": True}
+        return {
 
+            "success": False,
+
+            "msg": "User not found"
+        }
+
+    return {
+
+        "success": True,
+
+        "msg": "Login successful",
+
+        "username": name
+    }
 
 #ai api_______________________________________________________________
 @app.get("/api/get-questions/{company}")
