@@ -94,12 +94,12 @@ client = Groq(
 
 
 #routes
-@app.get("/practice", response_class=HTMLResponse)
-def practice():
-    return open("templates/practice.html", encoding="utf-8").read()
-# @app.get("/", response_class=HTMLResponse)
+# @app.get("/practice", response_class=HTMLResponse)
 # def practice():
 #     return open("templates/practice.html", encoding="utf-8").read()
+@app.get("/", response_class=HTMLResponse)
+def practice():
+    return open("templates/practice.html", encoding="utf-8").read()
 
 
 @app.get("/aptitude", response_class=HTMLResponse)
