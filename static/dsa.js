@@ -2082,7 +2082,35 @@ function addTimeline(text){
 
 // }
 
+// function aiReply(text){
+
+//     if(aiPaused) return;
+
+//     addMessage(
+//         text,
+//         "ai-message"
+//     );
+
+//     speak(text);
+// }
 function aiReply(text){
+
+    if(
+
+        !text
+
+        ||
+
+        text === "undefined"
+
+        ||
+
+        text.trim() === ""
+
+    ){
+
+        return;
+    }
 
     if(aiPaused) return;
 
@@ -2093,7 +2121,7 @@ function aiReply(text){
 
     speak(text);
 }
-
+// end
 function aiInterrupt(text){
 
     addMessage(
