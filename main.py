@@ -17,7 +17,6 @@ from pydantic import BaseModel
 import requests
 from fastapi import WebSocket
 import os
-from practice import app as practice_app
 from dotenv import load_dotenv
 from groq import Groq
 import sqlite3
@@ -86,8 +85,7 @@ def init_db():
         pass
     # end
 app = FastAPI()
-# mount practice routes
-app.mount("/practice", practice_app)
+
 init_db()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
