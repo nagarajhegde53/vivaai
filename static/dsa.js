@@ -543,10 +543,15 @@ async function animateAction(action){
             /* ================================== */
             /* TIMELINE */
             /* ================================== */
+            if(
+    action.ds
+    &&
+    action.action
+){  
 
             addTimeline(
                 `${action.ds} ${action.action}`
-            );
+            );}
 
             /* ================================== */
             /* ARRAY */
